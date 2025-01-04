@@ -1,4 +1,4 @@
-import HTTP_STATUS_CODES from './statusCodes';
+import HTTP_STATUS_CODES from '../core/statusCodes';
 import REASON_PHRASES from './reasonPhrases';
 
 export {
