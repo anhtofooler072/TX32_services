@@ -1,7 +1,10 @@
 "use strict"
 
 import { Collection, Db, MongoClient } from 'mongodb'
+import collections from '~/constants/collections'
 import { envConfig } from '~/constants/config'
+import { IToken } from '~/models/schemas/token.schema'
+import { IUser } from '~/models/schemas/user.schema'
 
 const uri = `mongodb+srv://${envConfig.dbUsername}:${envConfig.dbPassword}@final-semester.pmo5t.mongodb.net/${envConfig.dbName}?retryWrites=true&w=majority&appName=final-semester`
 
@@ -25,10 +28,13 @@ class DatabaseServices {
         }
     }
 
-    // get users(): Collection<UserDocument> {
-    //     return this.db.collection(collection.USER)
-    // }
+    get users(): Collection<IUser> {
+        return this.db.collection(collections.USERS)
+    }
 
+    get tokens(): Collection<IToken> {
+        return this.db.collection(collections.TOKENS)
+    }
 }
 const databaseServices = new DatabaseServices()
 export default databaseServices
