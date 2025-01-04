@@ -1,5 +1,5 @@
 import { USERS_MESSAGES } from "~/constants/messages"
-import { HTTP_STATUS_CODES } from "./httpStatusCode"
+import { HTTP_STATUS_CODES } from "~/core/httpStatusCode"
 
 interface ErrorBodyType {
     message: string

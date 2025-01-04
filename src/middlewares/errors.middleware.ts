@@ -1,11 +1,11 @@
 import { ErrorRequestHandler } from 'express';
 import { omit } from 'lodash';
 import { ErrorWithStatus } from '~/utils/errors.util';
-import { HTTP_STATUS_CODES } from '~/utils/httpStatusCode';
+import { HTTP_STATUS_CODES } from '~/core/httpStatusCode';
 
-// Định nghĩa rõ kiểu là ErrorRequestHandler
 export const defaultErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
     if (err instanceof ErrorWithStatus) {
+        console.log("defaultErrorHandler -> err", err);
         res.status(err.status).json(omit(err, 'status'));
         return;
     }
