@@ -7,7 +7,7 @@ import rootRouterV1 from "~/routes";
 import { envConfig } from "~/constants/config";
 import databaseServices from "~/services/database.service";
 import { defaultErrorHandler } from "~/middlewares/errors.middleware";
-import { HTTP_STATUS_CODES } from "./utils/httpStatusCode";
+import { NOT_FOUND } from "./core/error.response";
 
 // Khởi tạo socket service
 const app: Application = express();
@@ -26,12 +26,13 @@ databaseServices.connect()
 app.use('/api/v1', rootRouterV1)
 
 app.use((req, res) => {
-  res.status(HTTP_STATUS_CODES.NOT_FOUND).json({
-    status: HTTP_STATUS_CODES.NOT_FOUND,
+  new NOT_FOUND({
     message: 'The requested resource was not found',
-    path: req.originalUrl,
-    method: req.method,
-  });
+    metadata: {
+      path: req.originalUrl,
+      method: req.method,
+    },
+  }).send(res);
 });
 
 // init error handler
