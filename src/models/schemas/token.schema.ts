@@ -5,7 +5,7 @@ import { IUser } from './user.schema'
 const TokenSchema = new Schema({
     user_id: {
         type: Schema.Types.ObjectId,
-        ref: collections.USERS,
+        ref: collections.USER,
         required: true
     },
     token: {
@@ -34,4 +34,4 @@ export interface IToken extends Document {
     created_at: Date // Thời gian tạo token
 }
 
-export const Token = model<IToken>(collections.TOKENS, TokenSchema)
+export const Token = model<IToken>(collections.TOKEN, TokenSchema)
