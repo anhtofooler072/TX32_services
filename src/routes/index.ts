@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import usersRouters from './users.routes'
 import accessRouters from './access.routes';
+import projectRouters from './project.routes';
 
 
 const rootRouterV1 = Router()
@@ -10,5 +11,6 @@ rootRouterV1.get("/helpers", (req, res) => {
 });
 rootRouterV1.use('/user', usersRouters)
 rootRouterV1.use('/access', accessRouters)
+rootRouterV1.use('/project', projectRouters)
 
 export default rootRouterV1
