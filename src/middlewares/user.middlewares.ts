@@ -3,6 +3,11 @@ import { checkSchema, ParamSchema } from 'express-validator'
 import { NAME_REGEXP } from "~/helpers/regex"
 import { validate } from "~/utils/validations.util"
 import usersService from "~/services/users.service"
+import { ErrorWithStatus } from "~/utils/errors.util"
+import HTTP_STATUS_CODES from "~/core/statusCodes"
+import { envConfig } from "~/constants/config"
+import { verifyToken } from "~/utils/tokens.util"
+import { JsonWebTokenError } from "jsonwebtoken"
 
 const usernameSchema: ParamSchema = {
     notEmpty: {
@@ -146,5 +151,42 @@ export const loginValidation = validate(
             password: passwordShema
         },
         ['body']
+    )
+)
+
+export const accessTokenValidation = validate(
+    checkSchema(
+        {
+            authorization: {
+                custom: {
+                    options: async (value: string, { req }) => {
+                        const access_token = (value || '').split(' ')[1]
+
+                        if (!access_token) {
+                            throw new ErrorWithStatus({
+                                message: USERS_MESSAGES.ACCESS_TOKEN_REQUIRED,
+                                status: HTTP_STATUS_CODES.UNAUTHORIZED
+                            })
+                        }
+
+                        try {
+                            const decoded_authorization = await verifyToken({
+                                token: access_token,
+                                secretOrPublickey: envConfig.jwtSecretAccessToken
+                            })
+
+                            req.decoded_authorization = decoded_authorization
+                        } catch (error) {
+                            throw new ErrorWithStatus({
+                                message: (error as JsonWebTokenError).message,
+                                status: HTTP_STATUS_CODES.UNAUTHORIZED
+                            })
+                        }
+                        return true
+                    }
+                }
+            }
+        },
+        ['headers']
     )
 )
