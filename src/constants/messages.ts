@@ -74,6 +74,7 @@ export const PROJECTS_MESSAGES = {
     CREATOR_NOT_FOUND: 'Creator not found',
     PROJECT_NOT_FOUND: 'Project not found',
     PROJECT_ALREADY_EXIST: 'Project already exist',
+    PROJECT_ID_REQUIRED: 'Project ID is required',
     CREATE_PROJECT_SUCCESSFULLY: 'Create project successfully',
     GET_PROJECT_SUCCESSFULLY: 'Get project successfully',
     GET_PROJECTS_SUCCESSFULLY: 'Get projects successfully',
@@ -112,4 +113,5 @@ export const PROJECTS_MESSAGES = {
     PARTICIPANT_EMAIL_REQUIRED: 'Email is required for each participant',
     PARTICIPANT_USER_NOT_FOUND: 'Participant not found',
     PARTICIPANT_ROLE_INVALID: 'Participant role is invalid',
+    USER_NOT_PARTICIPANT: 'User is not a participant',
 } as const
