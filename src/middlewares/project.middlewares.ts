@@ -4,6 +4,22 @@ import databaseServices from '~/services/database.service';
 import usersService from '~/services/users.service';
 import { validate } from '~/utils/validations.util';
 import { ObjectId } from 'mongodb'
+import projectService from '~/services/project.service';
+import { TokenPayload } from '~/models/requests/user.request';
+import { Request, Response, NextFunction } from "express";
+import { NOT_FOUND } from '~/core/error.response';
+import { IProject } from '~/models/schemas/project.schema';
+
+
+declare module 'express-serve-static-core' {
+
+    interface Request {
+
+        project?: IProject;
+
+    }
+
+}
 
 class ProjectMiddleware {
     private titleSchema: ParamSchema = {
@@ -91,16 +107,6 @@ class ProjectMiddleware {
                     throw new Error(PROJECTS_MESSAGES.PARTICIPANT_NOT_FOUND || 'Participant not found');
                 }
 
-                // kiểm tra role của participant có hợp lệ không (nếu có)
-                // for (const participant of participants) {
-                //     const { role } = participant;
-                //     if (role && !['leader', 'staff'].includes(role)) {
-                //         throw new Error(
-                //             `${PROJECTS_MESSAGES.PARTICIPANT_ROLE_INVALID || 'Invalid participant role'}: ${role}`
-                //         );
-                //     }
-                // }
-
                 return true;
             },
         },
@@ -117,6 +123,66 @@ class ProjectMiddleware {
             ['body']
         )
     );
+
+    public updateProjectValidation = validate(
+        checkSchema(
+            {
+                title: this.titleSchema,
+                description: this.descriptionSchema,
+                participants: this.participantsSchema,
+            },
+            ['body']
+        )
+    );
+
+    // public validateProjectId = validate(
+    //     checkSchema({
+    //         id: {
+    //             notEmpty: {
+    //                 errorMessage: PROJECTS_MESSAGES.PROJECT_ID_REQUIRED || 'Project ID is required',
+    //             },
+    //             custom: {
+    //                 options: async (value) => {
+    //                     const projectExists = await projectService.checkProjectExist(value);
+    //                     if (!projectExists) {
+    //                         throw new Error(PROJECTS_MESSAGES.PROJECT_NOT_FOUND || 'Project not found');
+    //                     }
+    //                     return true;
+    //                 },
+    //             },
+    //         },
+    //     })
+    // );
+
+    async verifyUserProjectAccess(req: Request, res: Response, next: NextFunction) {
+        const projectId = req.params.projectId
+        const { user_id } = req.decoded_authorization as TokenPayload;
+
+        const project = await databaseServices.projects.findOne({
+            _id: new ObjectId(projectId)
+        })
+
+        if (!project) {
+            return next(new NOT_FOUND({
+                message: PROJECTS_MESSAGES.PROJECT_NOT_FOUND,
+            }))
+        }
+
+        const participant = await databaseServices.participants.findOne({
+            project_id: new ObjectId(projectId),
+            user_id: new ObjectId(user_id),
+            status: 'active'
+        })
+
+        if (!participant) {
+            return next(new NOT_FOUND({
+                message: PROJECTS_MESSAGES.USER_NOT_PARTICIPANT,
+            }))
+        }
+
+        req.project = project
+        return next()
+    }
 }
 
 export default new ProjectMiddleware();
