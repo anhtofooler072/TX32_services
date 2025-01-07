@@ -3,6 +3,8 @@
 import { Collection, Db, MongoClient } from 'mongodb'
 import collections from '~/constants/collections'
 import { envConfig } from '~/constants/config'
+import { IParticipant } from '~/models/schemas/participant.schema'
+import { IProject } from '~/models/schemas/project.schema'
 import { IToken } from '~/models/schemas/token.schema'
 import { IUser } from '~/models/schemas/user.schema'
 
@@ -29,11 +31,19 @@ class DatabaseServices {
     }
 
     get users(): Collection<IUser> {
-        return this.db.collection(collections.USERS)
+        return this.db.collection(collections.USER)
     }
 
     get tokens(): Collection<IToken> {
-        return this.db.collection(collections.TOKENS)
+        return this.db.collection(collections.TOKEN)
+    }
+
+    get projects(): Collection<IProject> {
+        return this.db.collection(collections.PROJECT)
+    }
+
+    get participants(): Collection<IParticipant> {
+        return this.db.collection(collections.PARTICIPANT)
     }
 }
 const databaseServices = new DatabaseServices()
