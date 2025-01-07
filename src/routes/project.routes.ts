@@ -21,4 +21,10 @@ Params: id
 */
 projectRouters.get('/:projectId', accessTokenValidation, projectMiddlewares.verifyUserProjectAccess, wrapRequestHandler(projectController.getProjectById))
 
+/*
+Description: Get all projects the authenticated user is participating in
+Method: GET
+*/
+projectRouters.get('/projects', accessTokenValidation, wrapRequestHandler(projectController.getAllParticipatingProjects))
+
 export default projectRouters
