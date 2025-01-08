@@ -270,6 +270,7 @@ class ProjectService {
             title: 1,
             description: 1,
             creator: 1,
+            key: 1,
             participants: 1,
             tasks: 1,
             attachments: 1,
@@ -398,6 +399,53 @@ class ProjectService {
       .toArray();
 
     return projects;
+  }
+
+  async updateProjectById(projectId: string, payload: ProjectReqBody) {
+    const { title, description, key } = payload;
+
+    const result = await databaseServices.projects.updateOne(
+      { _id: new ObjectId(projectId) },
+      {
+        $set: {
+          title,
+          description,
+          key,
+          updated_at: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      throw new ErrorWithStatus({
+        message: PROJECTS_MESSAGES.PROJECT_NOT_FOUND,
+        status: HTTP_STATUS_CODES.NOT_FOUND,
+      });
+    }
+
+    return {
+      _id: projectId,
+      title,
+      description,
+      key,
+    };
+  }
+
+  async deleteProjectById(projectId: string) {
+    const result = await databaseServices.projects.deleteOne({
+      _id: new ObjectId(projectId),
+    });
+
+    if (result.deletedCount === 0) {
+      throw new ErrorWithStatus({
+        message: PROJECTS_MESSAGES.PROJECT_NOT_FOUND,
+        status: HTTP_STATUS_CODES.NOT_FOUND,
+      });
+    }
+
+    return {
+      _id: projectId,
+    };
   }
 }
 

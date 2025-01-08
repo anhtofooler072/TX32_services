@@ -42,6 +42,25 @@ class ProjectController {
       metadata: result,
     }).send(res);
   };
+
+  updateProjectById = async (req: Request, res: Response) => {
+    const result = await projectService.updateProjectById(
+      req.params.project_id,
+      req.body
+    );
+    new OK({
+      message: PROJECTS_MESSAGES.UPDATE_PROJECT_SUCCESSFULLY,
+      metadata: result,
+    }).send(res);
+  };
+
+  deleteProjectById = async (req: Request, res: Response) => {
+    const result = await projectService.deleteProjectById(req.params.project_id);
+    new OK({
+      message: PROJECTS_MESSAGES.DELETE_PROJECT_SUCCESSFULLY,
+      metadata: result,
+    }).send(res);
+  };
 }
 
 export default new ProjectController();

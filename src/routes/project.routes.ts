@@ -46,4 +46,30 @@ projectRouters.get(
     wrapRequestHandler(projectController.getProjectById)
 );
 
+/*
+Description: Update a project - only leader/creator can update
+Method: PATCH
+Path: /:project_id
+Body: { title?: string, description?: string, key?: string }
+*/
+projectRouters.patch(
+    '/:project_id',
+    accessTokenValidation,
+    projectMiddlewares.validateUpdateProject,
+    wrapRequestHandler(projectMiddlewares.checkProjectPermissions(['Leader', 'Creator'])),
+    wrapRequestHandler(projectController.updateProjectById)
+)
+
+/*
+Description: Delete a project - only leader/creator can delete
+Method: DELETE  
+Path: /:project_id
+*/
+projectRouters.delete(
+    '/:project_id',
+    accessTokenValidation,
+    wrapRequestHandler(projectMiddlewares.checkProjectPermissions(['Leader', 'Creator'])),
+    wrapRequestHandler(projectController.deleteProjectById)
+)
+
 export default projectRouters;
