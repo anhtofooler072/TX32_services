@@ -65,6 +65,9 @@ export const USERS_MESSAGES = {
 } as const;
 
 export const PROJECTS_MESSAGES = {
+  // project
+  GET_ALL_PROJECTS_SUCCESSFULLY: "Get all projects successfully",
+
   TITLE_REQUIRED: "Title is required",
   TITLE_MUST_BE_STRING: "Title must be a string",
   TITLE_LENGTH: "Title length must be between 1 and 200 characters",
@@ -125,4 +128,6 @@ export const PROJECTS_MESSAGES = {
   KEY_REQUIRED: "Key is required",
   KEY_MUST_BE_STRING: "Key must be a string",
   KEY_LENGTH: "Key length must be between 1 and 100 characters",
+
+  TOO_MANY_REQUESTS: "Too many requests",
 } as const;
