@@ -12,14 +12,14 @@ Description: Get all projects the authenticated user is participating in
 Method: GET
 */
 projectRouters.get(
-  "/",
-  accessTokenValidation,
-  projectMiddlewares.createRateLimiter({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 3,
-  }),
-  projectMiddlewares.validateProjectQuery(ProjectQuerySchema),
-  wrapRequestHandler(projectController.getAllParticipatingProjects)
+    "/",
+    accessTokenValidation,
+    projectMiddlewares.createRateLimiter({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 20,
+    }),
+    projectMiddlewares.validateProjectQuery(ProjectQuerySchema),
+    wrapRequestHandler(projectController.getAllParticipatingProjects)
 );
 
 /*
@@ -28,10 +28,10 @@ Method: POST
 Body: { "name": "string", "description": "string", "due_date": ISO08601}
 */
 projectRouters.post(
-  "/create",
-  accessTokenValidation,
-  projectMiddlewares.createProjectValidation,
-  wrapRequestHandler(projectController.createNewProject)
+    "/create",
+    accessTokenValidation,
+    projectMiddlewares.createProjectValidation,
+    wrapRequestHandler(projectController.createNewProject)
 );
 
 /*
@@ -40,10 +40,10 @@ Method: GET
 Params: id
 */
 projectRouters.get(
-  "/:projectId",
-  accessTokenValidation,
-  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
-  wrapRequestHandler(projectController.getProjectById)
+    "/:projectId",
+    accessTokenValidation,
+    wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
+    wrapRequestHandler(projectController.getProjectById)
 );
 
 export default projectRouters;

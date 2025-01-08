@@ -30,13 +30,12 @@ class ProjectController {
   };
 
   getAllParticipatingProjects = async (req: Request, res: Response) => {
-    const user_id = req.decoded_authorization?.user_id;
+    const { user_id } = req.decoded_authorization as TokenPayload;
     if (!user_id) {
       return res.status(400).json({ message: "User ID is required" });
     }
     const result = await projectService.getAllParticipatingProjects(
       user_id
-      //   req.query
     );
     new OK({
       message: PROJECTS_MESSAGES.GET_ALL_PROJECTS_SUCCESSFULLY,

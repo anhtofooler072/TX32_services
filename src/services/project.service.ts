@@ -291,33 +291,109 @@ class ProjectService {
   }
 
   async getAllParticipatingProjects(userId: string) {
-    const projects = await databaseServices.projects
-      .aggregate([
-        // Bước 1: Tìm tất cả participants mà user_id = userId
-        { $match: { "participants.user_id": new ObjectId(userId) } },
+    const userIdObj = new ObjectId(userId);
 
-        // Bước 2: Lookup dự án từ bảng Project
+    const projects = await databaseServices.participants
+      .aggregate([
+        {
+          $match: {
+            user_id: userIdObj,
+            status: "active"
+          }
+        },
         {
           $lookup: {
             from: "Project",
             localField: "project_id",
             foreignField: "_id",
-            as: "project",
-          },
+            as: "project"
+          }
         },
-
-        // Bước 3: Chọn các trường cần thiết từ dự án
+        { $unwind: "$project" },
+        {
+          $lookup: {
+            from: "User",
+            localField: "project.creator",
+            foreignField: "_id",
+            pipeline: [
+              {
+                $project: {
+                  username: 1,
+                  email: 1,
+                  avatar_url: 1,
+                }
+              }
+            ],
+            as: "creator_info"
+          }
+        },
+        // Add lookup for leader information
+        {
+          $lookup: {
+            from: "Participant",
+            let: { project_id: "$project._id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$project_id", "$$project_id"] },
+                      { $eq: ["$role", "Leader"] }
+                    ]
+                  }
+                }
+              },
+              {
+                $lookup: {
+                  from: "User",
+                  localField: "user_id",
+                  foreignField: "_id",
+                  pipeline: [
+                    {
+                      $project: {
+                        username: 1,
+                        email: 1,
+                        avatar_url: 1
+                      }
+                    }
+                  ],
+                  as: "leader_info"
+                }
+              },
+              { $unwind: "$leader_info" }
+            ],
+            as: "leader"
+          }
+        },
         {
           $project: {
-            _id: 1,
-            title: 1,
-            description: 1,
-            creator: 1,
-            key: 1,
-            created_at: 1,
-            updated_at: 1,
-          },
-        },
+            _id: "$project._id",
+            title: "$project.title",
+            description: "$project.description",
+            key: "$project.key",
+            created_at: "$project.created_at",
+            updated_at: "$project.updated_at",
+            role: "$role",
+            creator: { $arrayElemAt: ["$creator_info", 0] },
+            leader: {
+              $let: {
+                vars: {
+                  leaderDoc: { $arrayElemAt: ["$leader", 0] }
+                },
+                in: {
+                  _id: "$$leaderDoc._id",
+                  project_id: "$$leaderDoc.project_id",
+                  role: "$$leaderDoc.role",
+                  status: "$$leaderDoc.status",
+                  joined_at: "$$leaderDoc.joined_at",
+                  username: "$$leaderDoc.leader_info.username",
+                  email: "$$leaderDoc.leader_info.email",
+                  avatar_url: "$$leaderDoc.leader_info.avatar_url"
+                }
+              }
+            }
+          }
+        }
       ])
       .toArray();
 

@@ -46,10 +46,9 @@ export const ProjectQuerySchema = z.object({
     .string()
     .optional()
     .transform((val) => Number(val)),
-  status: z.enum(["active", "archived", "all"]).optional(),
-  sortBy: z.enum(["created_at", "updated_at", "name"]).optional(),
+  sortBy: z.enum(["name", "key", "lead"]).optional(),
   search: z.string().optional(),
-  role: z.enum(["owner", "member", "all"]).optional(),
+  sortOrder: z.enum(["ASC", "DESC"]).optional(),
 });
 
 const Project = model<IProject>(collections.PROJECT, ProjectSchema);
