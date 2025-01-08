@@ -11,6 +11,8 @@ import { ErrorWithStatus } from "~/utils/errors.util";
 import HTTP_STATUS_CODES from "~/core/statusCodes";
 import { AnyZodObject, ZodError } from "zod";
 import rateLimit from "express-rate-limit";
+import REASON_PHRASES from "~/core/reasonPhrases";
+import { NAME_REGEXP } from "~/helpers/regex";
 declare module "express-serve-static-core" {
   interface Request {
     project?: IProject;
@@ -83,7 +85,7 @@ class ProjectMiddleware {
         if (!Array.isArray(participants)) {
           throw new Error(
             PROJECTS_MESSAGES.PARTICIPANTS_INVALID ||
-              "Participants must be an array"
+            "Participants must be an array"
           );
         }
 
@@ -135,16 +137,62 @@ class ProjectMiddleware {
     )
   );
 
-  //   public updateProjectValidation = validate(
-  //     checkSchema(
-  //       {
-  //         title: this.titleSchema,
-  //         description: this.descriptionSchema,
-  //         participants: this.participantsSchema,
-  //       },
-  //       ["body"]
-  //     )
-  //   );
+  validateUpdateProject = validate(
+    checkSchema({
+      title: {
+        optional: true,
+        isString: {
+          errorMessage: 'Title must be string'
+        },
+        trim: true,
+        isLength: {
+          options: { min: 1, max: 50 },
+          errorMessage: 'Title length must be between 1 and 50 characters'
+        }
+      },
+      description: {
+        optional: true,
+        isString: {
+          errorMessage: 'Description must be string'
+        },
+        trim: true,
+        isLength: {
+          options: { min: 1, max: 500 },
+          errorMessage: 'Description length must be between 1 and 500 characters'
+        }
+      },
+      key: {
+        optional: true,
+        isString: {
+          errorMessage: 'Key must be string'
+        },
+        trim: true,
+        isLength: {
+          options: { min: 2, max: 10 },
+          errorMessage: 'Key length must be between 2 and 10 characters'
+        },
+        matches: {
+          options: /^[A-Z0-9\-_]+$/,
+          errorMessage: 'Key must contain only uppercase letters and numbers'
+        },
+        custom: {
+          options: async (value, { req }) => {
+            if (!value) return true
+            const project = await databaseServices.projects.findOne({
+              key: value,
+              _id: {
+                $ne: req.params?.project_id ? new ObjectId(String(req.params.project_id)) : undefined
+              }
+            })
+            if (project) {
+              throw new Error('Key already exists')
+            }
+            return true
+          }
+        }
+      }
+    })
+  )
 
   async verifyUserProjectAccess(
     req: Request,
@@ -214,6 +262,28 @@ class ProjectMiddleware {
         throw error;
       }
     };
+  }
+
+  checkProjectPermissions(allowedRoles: string[]) {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      const { user_id } = req.decoded_authorization as TokenPayload
+      const { project_id } = req.params
+
+      const project = await databaseServices.participants.findOne({
+        project_id: new ObjectId(project_id),
+        user_id: new ObjectId(user_id),
+        role: { $in: allowedRoles }
+      })
+
+      if (!project) {
+        throw new ErrorWithStatus({
+          message: REASON_PHRASES.FORBIDDEN,
+          status: HTTP_STATUS_CODES.FORBIDDEN
+        })
+      }
+
+      next()
+    }
   }
 }
 
