@@ -11,6 +11,6 @@ rootRouterV1.get("/helpers", (req, res) => {
 });
 rootRouterV1.use('/user', usersRouters)
 rootRouterV1.use('/access', accessRouters)
-rootRouterV1.use('/project', projectRouters)
+rootRouterV1.use('/projects', projectRouters)
 
 export default rootRouterV1
