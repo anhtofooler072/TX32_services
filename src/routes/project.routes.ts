@@ -2,9 +2,25 @@ import { Router } from "express";
 import projectController from "~/controllers/project.controller";
 import projectMiddlewares from "~/middlewares/project.middlewares";
 import { accessTokenValidation } from "~/middlewares/user.middlewares";
+import { ProjectQuerySchema } from "~/models/schemas/project.schema";
 import { wrapRequestHandler } from "~/utils/wrapHandler";
 
 const projectRouters = Router();
+
+/*
+Description: Get all projects the authenticated user is participating in
+Method: GET
+*/
+projectRouters.get(
+  "/",
+  accessTokenValidation,
+  projectMiddlewares.createRateLimiter({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 3,
+  }),
+  projectMiddlewares.validateProjectQuery(ProjectQuerySchema),
+  wrapRequestHandler(projectController.getAllParticipatingProjects)
+);
 
 /*
 Description: This route is used to create a new project
@@ -29,15 +45,5 @@ projectRouters.get(
   wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
   wrapRequestHandler(projectController.getProjectById)
 );
-
-/*
-Description: Get all projects the authenticated user is participating in
-Method: GET
-*/
-// projectRouters.get(
-//   "/all",
-//   accessTokenValidation,
-//   wrapRequestHandler(projectController.getAllParticipatingProjects)
-// );
 
 export default projectRouters;

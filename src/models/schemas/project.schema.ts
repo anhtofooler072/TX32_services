@@ -1,6 +1,7 @@
 import { Schema, model, Document } from "mongoose";
 import { ObjectId } from "mongodb";
 import collections from "~/constants/collections";
+import { z } from "zod";
 
 const ProjectSchema = new Schema({
   title: {
@@ -36,6 +37,22 @@ export interface IProject extends Document {
   updated_at: Date;
 }
 
+export const ProjectQuerySchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .transform((val) => Number(val)),
+  limit: z
+    .string()
+    .optional()
+    .transform((val) => Number(val)),
+  status: z.enum(["active", "archived", "all"]).optional(),
+  sortBy: z.enum(["created_at", "updated_at", "name"]).optional(),
+  search: z.string().optional(),
+  role: z.enum(["owner", "member", "all"]).optional(),
+});
+
 const Project = model<IProject>(collections.PROJECT, ProjectSchema);
 
+export type ProjectQueryType = z.infer<typeof ProjectQuerySchema>;
 export default Project;

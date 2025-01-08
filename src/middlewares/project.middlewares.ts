@@ -4,14 +4,13 @@ import databaseServices from "~/services/database.service";
 import usersService from "~/services/users.service";
 import { validate } from "~/utils/validations.util";
 import { ObjectId } from "mongodb";
-import projectService from "~/services/project.service";
 import { TokenPayload } from "~/models/requests/user.request";
 import { Request, Response, NextFunction } from "express";
-import { FORBIDDEN, NOT_FOUND } from "~/core/error.response";
 import { IProject } from "~/models/schemas/project.schema";
 import { ErrorWithStatus } from "~/utils/errors.util";
 import HTTP_STATUS_CODES from "~/core/statusCodes";
-
+import { AnyZodObject, ZodError } from "zod";
+import rateLimit from "express-rate-limit";
 declare module "express-serve-static-core" {
   interface Request {
     project?: IProject;
@@ -88,28 +87,6 @@ class ProjectMiddleware {
           );
         }
 
-        // for (const participant of participants) {
-        //     const { email, role } = participant;
-
-        //     // Check email
-        //     if (!email) {
-        //         throw new Error(PROJECTS_MESSAGES.PARTICIPANT_EMAIL_REQUIRED || 'Email is required for each participant');
-        //     }
-        //     const user = await databaseServices.users.findOne({ email });
-        //     if (!user) {
-        //         throw new Error(
-        //             `${PROJECTS_MESSAGES.PARTICIPANT_USER_NOT_FOUND || 'Participant not found'}: ${email}`
-        //         );
-        //     }
-
-        //     // Check role (optional)
-        //     if (role && !['leader', 'staff'].includes(role)) {
-        //         throw new Error(
-        //             `${PROJECTS_MESSAGES.PARTICIPANT_ROLE_INVALID || 'Invalid participant role'}: ${role}`
-        //         );
-        //     }
-        // }
-
         const users = await databaseServices.users
           .find({
             _id: { $in: participants.map((id: string) => new ObjectId(id)) },
@@ -169,25 +146,6 @@ class ProjectMiddleware {
   //     )
   //   );
 
-  // public validateProjectId = validate(
-  //     checkSchema({
-  //         id: {
-  //             notEmpty: {
-  //                 errorMessage: PROJECTS_MESSAGES.PROJECT_ID_REQUIRED || 'Project ID is required',
-  //             },
-  //             custom: {
-  //                 options: async (value) => {
-  //                     const projectExists = await projectService.checkProjectExist(value);
-  //                     if (!projectExists) {
-  //                         throw new Error(PROJECTS_MESSAGES.PROJECT_NOT_FOUND || 'Project not found');
-  //                     }
-  //                     return true;
-  //                 },
-  //             },
-  //         },
-  //     })
-  // );
-
   async verifyUserProjectAccess(
     req: Request,
     res: Response,
@@ -201,11 +159,6 @@ class ProjectMiddleware {
     });
 
     if (!project) {
-      // return next(
-      //   new NOT_FOUND({
-      //     message: PROJECTS_MESSAGES.PROJECT_NOT_FOUND,
-      //   })
-      // );
       throw new ErrorWithStatus({
         message: PROJECTS_MESSAGES.PROJECT_NOT_FOUND,
         status: HTTP_STATUS_CODES.NOT_FOUND,
@@ -219,11 +172,6 @@ class ProjectMiddleware {
     });
 
     if (!participant) {
-      // return next(
-      //   new FORBIDDEN({
-      //     message: PROJECTS_MESSAGES.USER_NOT_PARTICIPANT,
-      //   })
-      // );
       throw new ErrorWithStatus({
         message: PROJECTS_MESSAGES.USER_NOT_PARTICIPANT,
         status: HTTP_STATUS_CODES.FORBIDDEN,
@@ -232,6 +180,40 @@ class ProjectMiddleware {
 
     req.project = project;
     return next();
+  }
+
+  createRateLimiter({ windowMs, max }: { windowMs?: number; max?: number }) {
+    return rateLimit({
+      windowMs: windowMs || 15 * 60 * 1000,
+      max: max || 100,
+      message: {
+        status: "error",
+        message: PROJECTS_MESSAGES.TOO_MANY_REQUESTS,
+      },
+      standardHeaders: true,
+      legacyHeaders: false,
+      keyGenerator: (req) => {
+        return (req.decoded_authorization as TokenPayload).user_id;
+      },
+    });
+  }
+
+  validateProjectQuery(schema: AnyZodObject) {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const validatedQuery = await schema.parseAsync(req.query);
+        req.query = validatedQuery;
+        return next();
+      } catch (error) {
+        if (error instanceof ZodError) {
+          throw new ErrorWithStatus({
+            message: error.errors[0].message,
+            status: HTTP_STATUS_CODES.BAD_REQUEST,
+          });
+        }
+        throw error;
+      }
+    };
   }
 }
 

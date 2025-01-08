@@ -289,6 +289,40 @@ class ProjectService {
     // Trả về dự án đầu tiên
     return project[0];
   }
+
+  async getAllParticipatingProjects(userId: string) {
+    const projects = await databaseServices.projects
+      .aggregate([
+        // Bước 1: Tìm tất cả participants mà user_id = userId
+        { $match: { "participants.user_id": new ObjectId(userId) } },
+
+        // Bước 2: Lookup dự án từ bảng Project
+        {
+          $lookup: {
+            from: "Project",
+            localField: "project_id",
+            foreignField: "_id",
+            as: "project",
+          },
+        },
+
+        // Bước 3: Chọn các trường cần thiết từ dự án
+        {
+          $project: {
+            _id: 1,
+            title: 1,
+            description: 1,
+            creator: 1,
+            key: 1,
+            created_at: 1,
+            updated_at: 1,
+          },
+        },
+      ])
+      .toArray();
+
+    return projects;
+  }
 }
 
 const projectService = new ProjectService();
