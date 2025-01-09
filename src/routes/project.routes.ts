@@ -68,6 +68,7 @@ Description: Delete a project - only leader/creator can delete
 Method: DELETE  
 Path: /:project_id
 */
+// sau khi xóa project thì cần xóa tất cả các task, conversation, attachment, activity liên quan. Hiện tại chỉ xử lý xóa project thì xóa các participant, log.
 projectRouters.delete(
   "/:projectId",
   accessTokenValidation,

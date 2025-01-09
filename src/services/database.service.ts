@@ -6,6 +6,7 @@ import { envConfig } from "~/constants/config";
 import { ILogingProjectActivity } from "~/models/schemas/loging_project_activity.schema";
 import { IParticipant } from "~/models/schemas/participant.schema";
 import { IProject } from "~/models/schemas/project.schema";
+import { IProjectAttachment } from "~/models/schemas/project_attachment.schema";
 import { ITask } from "~/models/schemas/task.schema";
 import { IToken } from "~/models/schemas/token.schema";
 import { IUser } from "~/models/schemas/user.schema";
@@ -60,6 +61,10 @@ class DatabaseServices {
 
   get tasks(): Collection<ITask> {
     return this.db.collection(collections.TASK);
+  }
+
+  get project_attachments(): Collection<IProjectAttachment> {
+    return this.db.collection(collections.ATTACHMENT);
   }
 }
 const databaseServices = new DatabaseServices();

@@ -31,9 +31,6 @@ class ProjectController {
 
   getAllParticipatingProjects = async (req: Request, res: Response) => {
     const { user_id } = req.decoded_authorization as TokenPayload;
-    if (!user_id) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
     const result = await projectService.getAllParticipatingProjects(user_id);
     new OK({
       message: PROJECTS_MESSAGES.GET_ALL_PROJECTS_SUCCESSFULLY,
@@ -55,7 +52,9 @@ class ProjectController {
   };
 
   deleteProjectById = async (req: Request, res: Response) => {
-    const result = await projectService.deleteProjectById(req.params.projectId);
+    const { projectId } = req.params;
+    const { user_id } = req.decoded_authorization as TokenPayload;
+    const result = await projectService.deleteProjectById(projectId, user_id);
     new OK({
       message: PROJECTS_MESSAGES.DELETE_PROJECT_SUCCESSFULLY,
       metadata: result,

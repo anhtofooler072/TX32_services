@@ -87,13 +87,124 @@ class ProjectService {
     };
   }
 
+  async getAllParticipatingProjects(userId: string) {
+    const userIdObj = new ObjectId(userId);
+
+    const projects = await databaseServices.participants
+      .aggregate([
+        {
+          $match: {
+            user_id: userIdObj,
+            status: "active",
+          },
+        },
+        {
+          $lookup: {
+            from: "Project",
+            localField: "project_id",
+            foreignField: "_id",
+            pipeline: [{ $match: { deleted: false } }],
+            as: "project",
+          },
+        },
+        { $unwind: "$project" },
+        {
+          $lookup: {
+            from: "User",
+            localField: "project.creator",
+            foreignField: "_id",
+            pipeline: [
+              {
+                $project: {
+                  username: 1,
+                  email: 1,
+                  avatar_url: 1,
+                },
+              },
+            ],
+            as: "creator_info",
+          },
+        },
+        // Add lookup for leader information
+        {
+          $lookup: {
+            from: "Participant",
+            let: { project_id: "$project._id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$project_id", "$$project_id"] },
+                      { $eq: ["$role", "Leader"] },
+                    ],
+                  },
+                },
+              },
+              {
+                $lookup: {
+                  from: "User",
+                  localField: "user_id",
+                  foreignField: "_id",
+                  pipeline: [
+                    {
+                      $project: {
+                        username: 1,
+                        email: 1,
+                        avatar_url: 1,
+                      },
+                    },
+                  ],
+                  as: "leader_info",
+                },
+              },
+              { $unwind: "$leader_info" },
+            ],
+            as: "leader",
+          },
+        },
+        {
+          $project: {
+            _id: "$project._id",
+            title: "$project.title",
+            description: "$project.description",
+            key: "$project.key",
+            created_at: "$project.created_at",
+            updated_at: "$project.updated_at",
+            role: "$role",
+            creator: { $arrayElemAt: ["$creator_info", 0] },
+            leader: {
+              $let: {
+                vars: {
+                  leaderDoc: { $arrayElemAt: ["$leader", 0] },
+                },
+                in: {
+                  _id: "$$leaderDoc._id",
+                  project_id: "$$leaderDoc.project_id",
+                  role: "$$leaderDoc.role",
+                  status: "$$leaderDoc.status",
+                  joined_at: "$$leaderDoc.joined_at",
+                  username: "$$leaderDoc.leader_info.username",
+                  email: "$$leaderDoc.leader_info.email",
+                  avatar_url: "$$leaderDoc.leader_info.avatar_url",
+                },
+              },
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    return projects;
+  }
+
   async getProjectById(projectId: string) {
     const projectIdObj = new ObjectId(projectId);
 
     const project = await databaseServices.projects
       .aggregate([
         // Bước 1: Tìm dự án theo ID
-        { $match: { _id: projectIdObj } },
+        { $match: { _id: projectIdObj, deleted: false } },
 
         // Bước 2: Lookup participants từ bảng Participant
         {
@@ -305,116 +416,6 @@ class ProjectService {
     return project[0];
   }
 
-  async getAllParticipatingProjects(userId: string) {
-    const userIdObj = new ObjectId(userId);
-
-    const projects = await databaseServices.participants
-      .aggregate([
-        {
-          $match: {
-            user_id: userIdObj,
-            status: "active",
-          },
-        },
-        {
-          $lookup: {
-            from: "Project",
-            localField: "project_id",
-            foreignField: "_id",
-            as: "project",
-          },
-        },
-        { $unwind: "$project" },
-        {
-          $lookup: {
-            from: "User",
-            localField: "project.creator",
-            foreignField: "_id",
-            pipeline: [
-              {
-                $project: {
-                  username: 1,
-                  email: 1,
-                  avatar_url: 1,
-                },
-              },
-            ],
-            as: "creator_info",
-          },
-        },
-        // Add lookup for leader information
-        {
-          $lookup: {
-            from: "Participant",
-            let: { project_id: "$project._id" },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ["$project_id", "$$project_id"] },
-                      { $eq: ["$role", "Leader"] },
-                    ],
-                  },
-                },
-              },
-              {
-                $lookup: {
-                  from: "User",
-                  localField: "user_id",
-                  foreignField: "_id",
-                  pipeline: [
-                    {
-                      $project: {
-                        username: 1,
-                        email: 1,
-                        avatar_url: 1,
-                      },
-                    },
-                  ],
-                  as: "leader_info",
-                },
-              },
-              { $unwind: "$leader_info" },
-            ],
-            as: "leader",
-          },
-        },
-        {
-          $project: {
-            _id: "$project._id",
-            title: "$project.title",
-            description: "$project.description",
-            key: "$project.key",
-            created_at: "$project.created_at",
-            updated_at: "$project.updated_at",
-            role: "$role",
-            creator: { $arrayElemAt: ["$creator_info", 0] },
-            leader: {
-              $let: {
-                vars: {
-                  leaderDoc: { $arrayElemAt: ["$leader", 0] },
-                },
-                in: {
-                  _id: "$$leaderDoc._id",
-                  project_id: "$$leaderDoc.project_id",
-                  role: "$$leaderDoc.role",
-                  status: "$$leaderDoc.status",
-                  joined_at: "$$leaderDoc.joined_at",
-                  username: "$$leaderDoc.leader_info.username",
-                  email: "$$leaderDoc.leader_info.email",
-                  avatar_url: "$$leaderDoc.leader_info.avatar_url",
-                },
-              },
-            },
-          },
-        },
-      ])
-      .toArray();
-
-    return projects;
-  }
-
   async updateProjectById(projectId: string, updateData: UpdateProjectReqBody) {
     const { userId, ...projectUpdateData } = updateData;
     const existingProject = await databaseServices.projects.findOne({
@@ -513,83 +514,61 @@ class ProjectService {
     return result;
   }
 
-  async deleteProjectById(projectId: string) {
-    const result = await databaseServices.projects.deleteOne({
+  async deleteProjectById(projectId: string, userId: string) {
+    const existingProject = await databaseServices.projects.findOne({
       _id: new ObjectId(projectId),
+      deleted: { $ne: true },
     });
 
-    if (result.deletedCount === 0) {
+    if (!existingProject) {
       throw new ErrorWithStatus({
         message: PROJECTS_MESSAGES.PROJECT_NOT_FOUND,
         status: HTTP_STATUS_CODES.NOT_FOUND,
       });
     }
 
+    const tasksUpdateResult = await databaseServices.tasks.updateMany(
+      { project_id: new ObjectId(projectId), deleted: { $ne: true } },
+      { $set: { deleted: true, deletedAt: new Date() } }
+    );
+
+    const attachmentsUpdateResult =
+      await databaseServices.project_attachments.updateMany(
+        { project_id: new ObjectId(projectId), deleted: { $ne: true } },
+        { $set: { deleted: true, deletedAt: new Date() } }
+      );
+
+    const participantsUpdateResult =
+      await databaseServices.participants.updateMany(
+        { project_id: new ObjectId(projectId), deleted: { $ne: true } },
+        { $set: { deleted: true, deletedAt: new Date() } }
+      );
+
+    const logsUpdateResult = await databaseServices.activities.updateMany(
+      { project_id: new ObjectId(projectId), deleted: { $ne: true } },
+      { $set: { deleted: true, deletedAt: new Date() } }
+    );
+
+    const projectUpdateResult = await databaseServices.projects.updateOne(
+      { _id: new ObjectId(projectId), deleted: { $ne: true } },
+      { $set: { deleted: true, deletedAt: new Date() } }
+    );
+
+    if (!projectUpdateResult.modifiedCount) {
+      throw new ErrorWithStatus({
+        message: "Failed to delete project.",
+        status: HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR,
+      });
+    }
+
     return {
-      _id: projectId,
+      projectId,
+      taskCount: tasksUpdateResult.modifiedCount,
+      attachmentCount: attachmentsUpdateResult.modifiedCount,
+      participantCount: participantsUpdateResult.modifiedCount,
+      logCount: logsUpdateResult.modifiedCount,
     };
   }
-
-  // async deleteProjectById(projectId: string) {
-  //   const session = await databaseServices.client.startSession();
-
-  //   try {
-  //     await session.startTransaction();
-
-  //     // Update project as deleted
-  //     const result = await databaseServices.projects.updateOne(
-  //       { _id: new ObjectId(projectId), deleted: { $ne: true } },
-  //       {
-  //         $set: {
-  //           deleted: true,
-  //           deletedAt: new Date(),
-  //         },
-  //       },
-  //       { session }
-  //     );
-
-  //     if (result.modifiedCount === 0) {
-  //       throw new Error(PROJECTS_MESSAGES.PROJECT_NOT_FOUND);
-  //     }
-
-  //     // Cascade soft delete related entities
-  //     await Promise.all([
-  //       databaseServices.participants.updateMany(
-  //         { projectId: new ObjectId(projectId) },
-  //         { $set: { deleted: true, deletedAt: new Date() } },
-  //         { session }
-  //       ),
-  //       databaseServices.tasks.updateMany(
-  //         { projectId: new ObjectId(projectId) },
-  //         { $set: { deleted: true, deletedAt: new Date() } },
-  //         { session }
-  //       ),
-  //       databaseServices.attachments.updateMany(
-  //         { projectId: new ObjectId(projectId) },
-  //         { $set: { deleted: true, deletedAt: new Date() } },
-  //         { session }
-  //       ),
-  //       databaseServices.logs.updateMany(
-  //         { projectId: new ObjectId(projectId) },
-  //         { $set: { deleted: true, deletedAt: new Date() } },
-  //         { session }
-  //       ),
-  //     ]);
-
-  //     await session.commitTransaction();
-
-  //     return {
-  //       _id: projectId,
-  //       deleted: true,
-  //       deletedAt: new Date(),
-  //     };
-  //   } catch (error) {
-  //     await session.abortTransaction();
-  //     throw error;
-  //   } finally {
-  //     await session.endSession();
-  //   }
-  // }
 
   async getProjectActivities(projectId: string) {
     const projectIdObj = new ObjectId(projectId);
@@ -599,6 +578,7 @@ class ProjectService {
         {
           $match: {
             project_id: projectIdObj,
+            pipeline: [{ $match: { deleted: false } }],
           },
         },
         {
