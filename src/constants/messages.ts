@@ -88,10 +88,14 @@ export const PROJECTS_MESSAGES = {
   GET_PROJECTS_SUCCESSFULLY: "Get projects successfully",
   UPDATE_PROJECT_SUCCESSFULLY: "Update project successfully",
   DELETE_PROJECT_SUCCESSFULLY: "Delete project successfully",
+
+  // project participant
   ADD_PARTICIPANT_SUCCESSFULLY: "Add participant successfully",
   REMOVE_PARTICIPANT_SUCCESSFULLY: "Remove participant successfully",
   PARTICIPANT_NOT_FOUND: "Participant not found",
   PARTICIPANT_ALREADY_EXIST: "Participant already exist",
+  UPDATE_PARTICIPANT_ROLE_SUCCESSFULLY: "Update participant role successfully",
+
   ADD_ATTACHMENT_SUCCESSFULLY: "Add attachment successfully",
   REMOVE_ATTACHMENT_SUCCESSFULLY: "Remove attachment successfully",
   ATTACHMENT_NOT_FOUND: "Attachment not found",
@@ -104,23 +108,11 @@ export const PROJECTS_MESSAGES = {
   GET_COMMENT_SUCCESSFULLY: "Get comment successfully",
   UPDATE_COMMENT_SUCCESSFULLY: "Update comment successfully",
   DELETE_COMMENT_SUCCESSFULLY: "Delete comment successfully",
+
   GET_PARTICIPANTS_SUCCESSFULLY: "Get participants successfully",
   GET_PARTICIPANT_SUCCESSFULLY: "Get participant successfully",
   GET_ATTACHMENTS_SUCCESSFULLY: "Get attachments successfully",
   GET_ATTACHMENT_SUCCESSFULLY: "Get attachment successfully",
-  GET_PARTICIPANT_ATTACHMENTS_SUCCESSFULLY:
-    "Get participant attachments successfully",
-  GET_PARTICIPANT_ATTACHMENT_SUCCESSFULLY:
-    "Get participant attachment successfully",
-  GET_PARTICIPANT_COMMENTS_SUCCESSFULLY:
-    "Get participant comments successfully",
-  GET_PARTICIPANT_COMMENT_SUCCESSFULLY: "Get participant comment successfully",
-  GET_PARTICIPANT_PARTICIPANTS_SUCCESSFULLY:
-    "Get participant participants successfully",
-  GET_PARTICIPANT_PARTICIPANT_SUCCESSFULLY:
-    "Get participant participant successfully",
-  GET_PARTICIPANT_PROJECTS_SUCCESSFULLY:
-    "Get participant projects successfully",
 
   PARTICIPANTS_MUST_BE_ARRAY: "Participants must be an array",
   PARTICIPANTS_INVALID: "Participants must be an array",
