@@ -70,6 +70,52 @@ class ProjectController {
       metadata: result,
     }).send(res);
   };
+
+  getProjectParticipants = async (req: Request, res: Response) => {
+    const result = await projectService.getProjectParticipants(
+      req.params.projectId
+    );
+    new OK({
+      message: PROJECTS_MESSAGES.GET_PARTICIPANTS_SUCCESSFULLY,
+      metadata: result,
+    }).send(res);
+  };
+
+  addProjectParticipant = async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    const result = await projectService.addProjectParticipant(
+      projectId,
+      req.body
+    );
+    new OK({
+      message: PROJECTS_MESSAGES.ADD_PARTICIPANT_SUCCESSFULLY,
+      metadata: result,
+    }).send(res);
+  };
+
+  updateProjectParticipantRole = async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    const result = await projectService.updateProjectParticipantRole(
+      projectId,
+      req.body
+    );
+    new OK({
+      message: PROJECTS_MESSAGES.UPDATE_PARTICIPANT_ROLE_SUCCESSFULLY,
+      metadata: result,
+    }).send(res);
+  };
+
+  removeProjectParticipant = async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    const result = await projectService.removeProjectParticipant(
+      projectId,
+      req.body
+    );
+    new OK({
+      message: PROJECTS_MESSAGES.REMOVE_PARTICIPANT_SUCCESSFULLY,
+      metadata: result,
+    }).send(res);
+  };
 }
 
 export default new ProjectController();

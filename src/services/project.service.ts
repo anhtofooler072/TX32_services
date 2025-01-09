@@ -9,8 +9,8 @@ import Participant from "~/models/schemas/participant.schema";
 import { ErrorWithStatus } from "~/utils/errors.util";
 import HTTP_STATUS_CODES from "~/core/statusCodes";
 import { PROJECTS_MESSAGES, USERS_MESSAGES } from "~/constants/messages";
-import LogingProjectActivity from "~/models/schemas/loging_project_activity.schema";
 import activityService from "~/services/activity.service";
+import collections from "~/constants/collections";
 
 class ProjectService {
   async findProjects(query = {}) {
@@ -40,7 +40,7 @@ class ProjectService {
           _id: new ObjectId(),
           project_id: projectId,
           user_id: new ObjectId(userId),
-          role: userId === creatorId ? "Leader" : "Staff",
+          role: userId === creatorId ? "leader" : "staff",
           status: "active",
           joined_at: new Date(),
         })
@@ -100,7 +100,7 @@ class ProjectService {
         },
         {
           $lookup: {
-            from: "Project",
+            from: collections.PROJECT,
             localField: "project_id",
             foreignField: "_id",
             pipeline: [{ $match: { deleted: false } }],
@@ -110,7 +110,7 @@ class ProjectService {
         { $unwind: "$project" },
         {
           $lookup: {
-            from: "User",
+            from: collections.USER,
             localField: "project.creator",
             foreignField: "_id",
             pipeline: [
@@ -128,7 +128,7 @@ class ProjectService {
         // Add lookup for leader information
         {
           $lookup: {
-            from: "Participant",
+            from: collections.PARTICIPANT,
             let: { project_id: "$project._id" },
             pipeline: [
               {
@@ -136,14 +136,14 @@ class ProjectService {
                   $expr: {
                     $and: [
                       { $eq: ["$project_id", "$$project_id"] },
-                      { $eq: ["$role", "Leader"] },
+                      { $eq: ["$role", "leader"] },
                     ],
                   },
                 },
               },
               {
                 $lookup: {
-                  from: "User",
+                  from: collections.USER,
                   localField: "user_id",
                   foreignField: "_id",
                   pipeline: [
@@ -209,7 +209,7 @@ class ProjectService {
         // Bước 2: Lookup participants từ bảng Participant
         {
           $lookup: {
-            from: "Participant",
+            from: collections.PARTICIPANT,
             localField: "_id",
             foreignField: "project_id",
             as: "participants",
@@ -219,7 +219,7 @@ class ProjectService {
         // Bước 3: Lookup thông tin user từ bảng User
         {
           $lookup: {
-            from: "User",
+            from: collections.USER,
             localField: "participants.user_id",
             foreignField: "_id",
             as: "userDetails",
@@ -320,7 +320,7 @@ class ProjectService {
         // Bước 6: Lookup tasks từ bảng Task
         {
           $lookup: {
-            from: "Task",
+            from: collections.TASK,
             localField: "_id",
             foreignField: "project",
             as: "tasks",
@@ -355,7 +355,7 @@ class ProjectService {
         // Bước 8: Lookup attachments qua bảng ProjectAttachment
         {
           $lookup: {
-            from: "ProjectAttachment",
+            from: collections.PROJECT_ATTACHMENT,
             localField: "_id",
             foreignField: "project_id",
             as: "projectAttachments",
@@ -363,7 +363,7 @@ class ProjectService {
         },
         {
           $lookup: {
-            from: "Attachment",
+            from: collections.ATTACHMENT,
             localField: "projectAttachments.attachment_id",
             foreignField: "_id",
             as: "attachments",
@@ -578,7 +578,7 @@ class ProjectService {
         {
           $match: {
             project_id: projectIdObj,
-            pipeline: [{ $match: { deleted: false } }],
+            deleted: { $ne: true },
           },
         },
         {
@@ -599,6 +599,145 @@ class ProjectService {
       .toArray();
 
     return activities;
+  }
+
+  async getProjectParticipants(projectId: string) {
+    const projectIdObj = new ObjectId(projectId);
+
+    // Get participants with user details
+    const participants = await databaseServices.participants
+      .aggregate([
+        {
+          $match: {
+            project_id: projectIdObj,
+            deleted: { $ne: true },
+          },
+        },
+        {
+          $lookup: {
+            from: collections.USER,
+            localField: "user_id",
+            foreignField: "_id",
+            pipeline: [
+              {
+                $project: {
+                  _id: 1,
+                  username: 1,
+                  email: 1,
+                  avatar_url: 1,
+                },
+              },
+            ],
+            as: "userDetails",
+          },
+        },
+        {
+          $unwind: "$userDetails",
+        },
+        {
+          $project: {
+            _id: 1,
+            user: {
+              _id: "$userDetails._id",
+              username: "$userDetails.username",
+              email: "$userDetails.email",
+              avatar_url: "$userDetails.avatar_url",
+            },
+            role: 1,
+            status: 1,
+            joined_at: 1,
+          },
+        },
+      ])
+      .toArray();
+
+    return participants;
+  }
+
+  async addProjectParticipant(
+    projectId: string,
+    payload: { userId: string; role: string }
+  ) {
+    const { userId, role } = payload;
+
+    const projectIdObj = new ObjectId(projectId);
+    const userIdObj = new ObjectId(userId);
+
+    // Kiểm tra nếu user đã là participant
+    const existingParticipant = await databaseServices.participants.findOne({
+      project_id: projectIdObj,
+      user_id: userIdObj,
+      deleted: false,
+    });
+
+    if (existingParticipant) {
+      throw new ErrorWithStatus({
+        message: PROJECTS_MESSAGES.PARTICIPANT_ALREADY_EXIST,
+        status: HTTP_STATUS_CODES.BAD_REQUEST,
+      });
+    }
+
+    const participant = new Participant({
+      project_id: projectIdObj,
+      user_id: userIdObj,
+      role,
+    });
+
+    await databaseServices.participants.insertOne(participant);
+
+    return participant;
+  }
+
+  async updateProjectParticipantRole(
+    projectId: string,
+    payload: {
+      userId: string;
+      role: string;
+    }
+  ) {
+    const { userId, role } = payload;
+    const projectIdObj = new ObjectId(projectId);
+    const userIdObj = new ObjectId(userId);
+
+    const updatedParticipant =
+      await databaseServices.participants.findOneAndUpdate(
+        { project_id: projectIdObj, user_id: userIdObj, deleted: false },
+        { $set: { role } },
+        { returnDocument: "after" }
+      );
+
+    if (!updatedParticipant) {
+      throw new ErrorWithStatus({
+        message: PROJECTS_MESSAGES.PARTICIPANT_NOT_FOUND,
+        status: HTTP_STATUS_CODES.NOT_FOUND,
+      });
+    }
+
+    return updatedParticipant;
+  }
+
+  async removeProjectParticipant(
+    projectId: string,
+    payload: { userId: string }
+  ) {
+    const { userId } = payload;
+    const projectIdObj = new ObjectId(projectId);
+    const userIdObj = new ObjectId(userId);
+
+    const updatedParticipant = await Participant.findOneAndUpdate(
+      { project_id: projectIdObj, user_id: userIdObj, deleted: false },
+      { $set: { deleted: true, deletedAt: new Date() } },
+      { new: true }
+    );
+
+    if (!updatedParticipant) {
+      throw new ErrorWithStatus({
+        message: "Participant not found or has already been removed.",
+        status: HTTP_STATUS_CODES.NOT_FOUND,
+      });
+    }
+
+    return updatedParticipant;
   }
 }
 

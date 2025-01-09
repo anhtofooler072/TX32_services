@@ -1,5 +1,5 @@
 import { checkSchema, ParamSchema } from "express-validator";
-import { PROJECTS_MESSAGES } from "~/constants/messages";
+import { PROJECTS_MESSAGES, USERS_MESSAGES } from "~/constants/messages";
 import databaseServices from "~/services/database.service";
 import usersService from "~/services/user.service";
 import { validate } from "~/utils/validations.util";
@@ -158,7 +158,7 @@ class ProjectMiddleware {
     )
   );
 
-  validateUpdateProject = validate(
+  public validateUpdateProject = validate(
     checkSchema({
       title: {
         optional: true,
@@ -190,8 +190,8 @@ class ProjectMiddleware {
         },
         trim: true,
         isLength: {
-          options: { min: 2, max: 10 },
-          errorMessage: "Key length must be between 2 and 10 characters",
+          options: { min: 2, max: 30 },
+          errorMessage: "Key length must be between 2 and 30 characters",
         },
         matches: {
           options: /^[A-Z0-9\-_ ]+$/,
@@ -210,6 +210,81 @@ class ProjectMiddleware {
             });
             if (project) {
               throw new Error("Key already exists");
+            }
+            return true;
+          },
+        },
+      },
+    })
+  );
+
+  // Middleware to validate user_id in request body
+  public validateAddParticipantToProject = validate(
+    checkSchema({
+      userId: {
+        in: ["body"],
+        notEmpty: {
+          errorMessage: "User ID is required",
+        },
+        custom: {
+          options: async (value) => {
+            const userExists = await usersService.checkUserExistById(value);
+            if (!userExists) {
+              throw new Error(USERS_MESSAGES.USER_NOT_FOUND);
+            }
+            return true;
+          },
+        },
+      },
+      role: {
+        in: ["body"],
+        notEmpty: {
+          errorMessage: "Role is required",
+        },
+        isString: {
+          errorMessage: "Role must be string",
+        },
+        custom: {
+          options: async (value) => {
+            if (!["leader", "staff"].includes(value)) {
+              throw new Error("Role must be either Leader or Staff");
+            }
+            return true;
+          },
+        },
+      },
+    })
+  );
+
+  public validateUpdateParticipantRole = validate(
+    checkSchema({
+      userId: {
+        in: ["body"],
+        notEmpty: {
+          errorMessage: "User ID is required",
+        },
+        custom: {
+          options: async (value) => {
+            const userExists = await usersService.checkUserExistById(value);
+            if (!userExists) {
+              throw new Error(USERS_MESSAGES.USER_NOT_FOUND);
+            }
+            return true;
+          },
+        },
+      },
+      role: {
+        in: ["body"],
+        notEmpty: {
+          errorMessage: "Role is required",
+        },
+        isString: {
+          errorMessage: "Role must be string",
+        },
+        custom: {
+          options: async (value) => {
+            if (!["leader", "staff"].includes(value)) {
+              throw new Error("Role must be either Leader or Staff");
             }
             return true;
           },
@@ -241,6 +316,7 @@ class ProjectMiddleware {
       project_id: new ObjectId(projectId),
       user_id: new ObjectId(user_id),
       status: "active",
+      deleted: false,
     });
 
     if (!participant) {
@@ -253,6 +329,28 @@ class ProjectMiddleware {
     req.project = project;
     return next();
   }
+
+  public verifyProjectExists = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const projectId = req.params.projectId;
+    const project = await databaseServices.projects.findOne({
+      _id: new ObjectId(projectId),
+      deleted: false,
+    });
+
+    if (!project) {
+      throw new ErrorWithStatus({
+        message: PROJECTS_MESSAGES.PROJECT_NOT_FOUND,
+        status: HTTP_STATUS_CODES.NOT_FOUND,
+      });
+    }
+
+    req.project = project;
+    return next();
+  };
 
   createRateLimiter({ windowMs, max }: { windowMs?: number; max?: number }) {
     return rateLimit({
@@ -270,7 +368,7 @@ class ProjectMiddleware {
     });
   }
 
-  validateProjectQuery(schema: AnyZodObject) {
+  public validateProjectQuery(schema: AnyZodObject) {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {
         const validatedQuery = await schema.parseAsync(req.query);
@@ -288,7 +386,7 @@ class ProjectMiddleware {
     };
   }
 
-  checkProjectPermissions(allowedRoles: string[]) {
+  public checkProjectPermissions(allowedRoles: string[]) {
     return async (req: Request, res: Response, next: NextFunction) => {
       const { user_id } = req.decoded_authorization as TokenPayload;
       const { projectId } = req.params;

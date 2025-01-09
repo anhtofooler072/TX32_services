@@ -43,6 +43,7 @@ Params: id
 projectRouters.get(
   "/:projectId",
   accessTokenValidation,
+  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
   wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
   wrapRequestHandler(projectController.getProjectById)
 );
@@ -56,9 +57,10 @@ Body: { title?: string, description?: string, key?: string }
 projectRouters.patch(
   "/:projectId",
   accessTokenValidation,
+  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
   projectMiddlewares.validateUpdateProject,
   wrapRequestHandler(
-    projectMiddlewares.checkProjectPermissions(["Leader", "Creator"])
+    projectMiddlewares.checkProjectPermissions(["leader", "creator"])
   ),
   wrapRequestHandler(projectController.updateProjectById)
 );
@@ -73,7 +75,7 @@ projectRouters.delete(
   "/:projectId",
   accessTokenValidation,
   wrapRequestHandler(
-    projectMiddlewares.checkProjectPermissions(["Leader", "Creator"])
+    projectMiddlewares.checkProjectPermissions(["leader", "creator"])
   ),
   wrapRequestHandler(projectController.deleteProjectById)
 );
@@ -87,68 +89,67 @@ Path: /:project_id/activities
 projectRouters.get(
   "/:projectId/activities",
   accessTokenValidation,
+  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
   wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
   wrapRequestHandler(projectController.getProjectActivities)
 );
 
-// /*
-// Description: Archive/Unarchive project
-// Method: PATCH
-// Path: /:project_id/archive
-// */
-// projectRouters.patch(
-//   "/:project_id/archive",
-//   accessTokenValidation,
-//   projectMiddlewares.checkProjectPermissions(["Leader", "Creator"]),
-//   wrapRequestHandler(projectController.toggleProjectArchive)
-// );
+/*
+Description: Get project participants
+Method: GET
+Path: /:projectId/participants
+*/
+projectRouters.get(
+  "/:projectId/participants",
+  accessTokenValidation,
+  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
+  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
+  wrapRequestHandler(projectController.getProjectParticipants)
+);
 
-// /*
-// Description: Get project members
-// Method: GET
-// Path: /:project_id/members
-// */
-// projectRouters.get(
-//   "/:project_id/members",
-//   accessTokenValidation,
-//   projectMiddlewares.verifyUserProjectAccess,
-//   wrapRequestHandler(projectController.getProjectMembers)
-// );
+/*
+Description: Add participant to project - only leader/creator can add
+Method: POST
+Path: /:projectId/participants
+*/
+projectRouters.post(
+  "/:projectId/participants",
+  accessTokenValidation,
+  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
+  projectMiddlewares.validateAddParticipantToProject,
+  wrapRequestHandler(
+    projectMiddlewares.checkProjectPermissions(["leader", "creator"])
+  ),
+  wrapRequestHandler(projectController.addProjectParticipant)
+);
 
-// /*
-// Description: Add member to project
-// Method: POST
-// Path: /:project_id/members
-// */
-// projectRouters.post(
-//   "/:project_id/members",
-//   accessTokenValidation,
-//   projectMiddlewares.checkProjectPermissions(["Leader", "Creator"]),
-//   wrapRequestHandler(projectController.addProjectMember)
-// );
+/*
+Description: Update participant role - only leader/creator can update
+Method: PATCH
+Path: /:projectId/participants
+*/
+projectRouters.patch(
+  "/:projectId/participants",
+  accessTokenValidation,
+  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
+  projectMiddlewares.validateUpdateParticipantRole,
+  wrapRequestHandler(
+    projectMiddlewares.checkProjectPermissions(["leader", "creator"])
+  ),
+  wrapRequestHandler(projectController.updateProjectParticipantRole)
+);
 
-// /*
-// Description: Update member role
-// Method: PATCH
-// Path: /:project_id/members/:member_id
-// */
-// projectRouters.patch(
-//   "/:project_id/members/:member_id",
-//   accessTokenValidation,
-//   projectMiddlewares.checkProjectPermissions(["Leader", "Creator"]),
-//   wrapRequestHandler(projectController.updateMemberRole)
-// );
-
-// /*
-// Description: Leave/Remove from project
-// Method: DELETE
-// Path: /:project_id/members/:member_id
-// */
-// projectRouters.delete(
-//   "/:project_id/members/:member_id",
-//   accessTokenValidation,
-//   projectMiddlewares.verifyUserProjectAccess,
-//   wrapRequestHandler(projectController.removeMember)
-// );
+/*
+Description: Leave/Remove participant from project
+Method: DELETE
+Path: /:projectId/participants
+*/
+projectRouters.delete(
+  "/:projectId/participants",
+  accessTokenValidation,
+  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
+  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
+  wrapRequestHandler(projectController.removeProjectParticipant)
+);
 
 export default projectRouters;
