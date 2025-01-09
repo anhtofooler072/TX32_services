@@ -83,6 +83,7 @@ class ProjectController {
 
   addProjectParticipant = async (req: Request, res: Response) => {
     const { projectId } = req.params;
+    const { user_id } = req.decoded_authorization as TokenPayload;
     const result = await projectService.addProjectParticipant(
       projectId,
       req.body

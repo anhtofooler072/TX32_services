@@ -685,6 +685,24 @@ class ProjectService {
 
     await databaseServices.participants.insertOne(participant);
 
+    // Ghi log
+    await activityService.logActivity({
+      projectId,
+      entity: "participant",
+      action: "CREATE",
+      modifiedBy: {
+        _id: userIdObj,
+        username: "",
+        email: "",
+        avatar_url: "",
+      },
+      changes: {
+        userId: { from: null, to: userId },
+        role: { from: null, to: role },
+      },
+      detail: `Added participant with role '${role}'`,
+    });
+
     return participant;
   }
 
@@ -699,6 +717,19 @@ class ProjectService {
     const projectIdObj = new ObjectId(projectId);
     const userIdObj = new ObjectId(userId);
 
+    const existingParticipant = await databaseServices.participants.findOne({
+      project_id: projectIdObj,
+      user_id: userIdObj,
+      deleted: false,
+    });
+
+    if (!existingParticipant) {
+      throw new ErrorWithStatus({
+        message: PROJECTS_MESSAGES.PARTICIPANT_NOT_FOUND,
+        status: HTTP_STATUS_CODES.NOT_FOUND,
+      });
+    }
+
     const updatedParticipant =
       await databaseServices.participants.findOneAndUpdate(
         { project_id: projectIdObj, user_id: userIdObj, deleted: false },
@@ -706,12 +737,21 @@ class ProjectService {
         { returnDocument: "after" }
       );
 
-    if (!updatedParticipant) {
-      throw new ErrorWithStatus({
-        message: PROJECTS_MESSAGES.PARTICIPANT_NOT_FOUND,
-        status: HTTP_STATUS_CODES.NOT_FOUND,
-      });
-    }
+    await activityService.logActivity({
+      projectId,
+      entity: "participant",
+      action: "UPDATE",
+      modifiedBy: {
+        _id: userIdObj,
+        username: "",
+        email: "",
+        avatar_url: "",
+      },
+      changes: {
+        role: { from: existingParticipant.role, to: role },
+      },
+      detail: `Updated participant role to '${role}'`,
+    });
 
     return updatedParticipant;
   }
@@ -736,6 +776,22 @@ class ProjectService {
         status: HTTP_STATUS_CODES.NOT_FOUND,
       });
     }
+
+    await activityService.logActivity({
+      projectId,
+      entity: "participant",
+      action: "REMOVE",
+      modifiedBy: {
+        _id: userIdObj,
+        username: "",
+        email: "",
+        avatar_url: "",
+      },
+      changes: {
+        userId: { from: userId, to: null },
+      },
+      detail: `Removed participant`,
+    });
 
     return updatedParticipant;
   }

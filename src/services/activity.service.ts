@@ -5,7 +5,7 @@ import databaseServices from "~/services/database.service";
 interface LogActivityParams {
   projectId: string; // ID của project
   entity: string; // Loại thực thể (project, task, participant, ...)
-  action: "CREATE" | "UPDATE" | "DELETE"; // Hành động thực hiện
+  action: "CREATE" | "UPDATE" | "DELETE" | "REMOVE"; // Hành động thực hiện
   changes: Record<string, { from: any; to: any }>; // Thay đổi chi tiết
   detail: string; // Chi tiết hoạt động
   modifiedBy: object; // Người thực hiện hành động
