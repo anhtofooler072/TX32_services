@@ -15,12 +15,12 @@ const ParticipantSchema = new Schema({
   },
   role: {
     type: String,
-    enum: ["Leader", "Staff"],
+    enum: ["leader", "staff"],
     default: "staff",
   },
   status: {
     type: String,
-    enum: ["Active", "Left", "Banned"],
+    enum: ["active", "left", "banned"],
     default: "Active",
   },
   joined_at: {
