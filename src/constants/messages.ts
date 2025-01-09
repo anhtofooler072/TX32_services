@@ -71,6 +71,8 @@ export const PROJECTS_MESSAGES = {
   TITLE_REQUIRED: "Title is required",
   TITLE_MUST_BE_STRING: "Title must be a string",
   TITLE_LENGTH: "Title length must be between 1 and 200 characters",
+  TITLE_INVALID: "Title must contain only letters, numbers, and spaces",
+  TITLE_EXISTS: "Title already exists",
   DESCRIPTION_MUST_BE_STRING: "Description must be a string",
   DESCRIPTION_LENGTH: "Description cannot exceed 1000 characters",
   CREATOR_REQUIRED: "Creator is required",
@@ -78,6 +80,9 @@ export const PROJECTS_MESSAGES = {
   PROJECT_NOT_FOUND: "Project not found",
   PROJECT_ALREADY_EXIST: "Project already exist",
   PROJECT_ID_REQUIRED: "Project ID is required",
+  PROJECT_DELETED: "Project has been soft deleted.",
+  PROJECT_ALREADY_DELETED: "Project is already marked as deleted.",
+
   CREATE_PROJECT_SUCCESSFULLY: "Create project successfully",
   GET_PROJECT_SUCCESSFULLY: "Get project successfully",
   GET_PROJECTS_SUCCESSFULLY: "Get projects successfully",
@@ -130,4 +135,6 @@ export const PROJECTS_MESSAGES = {
   KEY_LENGTH: "Key length must be between 1 and 100 characters",
 
   TOO_MANY_REQUESTS: "Too many requests",
+
+  GET_PROJECT_ACTIVITIES_SUCCESSFULLY: "Get project activities successfully",
 } as const;
