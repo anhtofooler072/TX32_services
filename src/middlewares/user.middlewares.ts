@@ -2,7 +2,7 @@ import { USERS_MESSAGES } from "~/constants/messages";
 import { checkSchema, ParamSchema } from "express-validator";
 import { NAME_REGEXP } from "~/helpers/regex";
 import { validate } from "~/utils/validations.util";
-import usersService from "~/services/users.service";
+import usersService from "~/services/user.service";
 import { ErrorWithStatus } from "~/utils/errors.util";
 import HTTP_STATUS_CODES from "~/core/statusCodes";
 import { envConfig } from "~/constants/config";
