@@ -34,9 +34,7 @@ class ProjectController {
     if (!user_id) {
       return res.status(400).json({ message: "User ID is required" });
     }
-    const result = await projectService.getAllParticipatingProjects(
-      user_id
-    );
+    const result = await projectService.getAllParticipatingProjects(user_id);
     new OK({
       message: PROJECTS_MESSAGES.GET_ALL_PROJECTS_SUCCESSFULLY,
       metadata: result,
@@ -44,9 +42,11 @@ class ProjectController {
   };
 
   updateProjectById = async (req: Request, res: Response) => {
+    const { user_id } = req.decoded_authorization as TokenPayload;
+    const updateData = { ...req.body, userId: user_id };
     const result = await projectService.updateProjectById(
-      req.params.project_id,
-      req.body
+      req.params.projectId,
+      updateData
     );
     new OK({
       message: PROJECTS_MESSAGES.UPDATE_PROJECT_SUCCESSFULLY,
@@ -55,9 +55,19 @@ class ProjectController {
   };
 
   deleteProjectById = async (req: Request, res: Response) => {
-    const result = await projectService.deleteProjectById(req.params.project_id);
+    const result = await projectService.deleteProjectById(req.params.projectId);
     new OK({
       message: PROJECTS_MESSAGES.DELETE_PROJECT_SUCCESSFULLY,
+      metadata: result,
+    }).send(res);
+  };
+
+  getProjectActivities = async (req: Request, res: Response) => {
+    const result = await projectService.getProjectActivities(
+      req.params.projectId
+    );
+    new OK({
+      message: PROJECTS_MESSAGES.GET_PROJECT_ACTIVITIES_SUCCESSFULLY,
       metadata: result,
     }).send(res);
   };

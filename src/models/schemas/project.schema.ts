@@ -23,9 +23,56 @@ const ProjectSchema = new Schema({
     required: true,
     unique: true,
   },
+  deleted: {
+    type: Boolean,
+    default: false,
+  },
+  hasBeenModified: {
+    type: Boolean,
+    default: false,
+  },
+  revisionHistory: [
+    {
+      modifiedAt: {
+        type: Date,
+        required: true,
+      },
+      modifiedBy: {
+        _id: ObjectId,
+        username: String,
+        email: String,
+        avatar_url: String,
+      },
+      changes: {
+        type: Map,
+        of: {
+          type: {
+            from: Schema.Types.Mixed,
+            to: Schema.Types.Mixed,
+          },
+        },
+      },
+      changeDescription: {
+        type: String,
+        required: true,
+      },
+    },
+  ],
+  deletedAt: { type: Date, default: null },
   created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now },
 });
+
+// interface IRevisionHistory {
+//   modifiedAt: Date;
+//   modifiedBy: {
+//     _id: ObjectId;
+//     username: string;
+//     email: string;
+//     avatar_url: string;
+//   };
+//   changes: Record<string, { from: any; to: any }>;
+//   changeDescription: string;
+// }
 
 export interface IProject extends Document {
   _id: ObjectId;
@@ -33,8 +80,21 @@ export interface IProject extends Document {
   description: string;
   creator: ObjectId;
   key: string;
+  deleted?: boolean;
+  hasBeenModified?: boolean;
+  revisionHistory?: Array<{
+    modifiedAt: Date;
+    modifiedBy: {
+      _id: ObjectId;
+      username: string;
+      email: string;
+      avatar_url: string;
+    };
+    changes: Record<string, { from: any; to: any }>;
+    changeDescription: string;
+  }>;
+  deletedAt?: Date;
   created_at: Date;
-  updated_at: Date;
 }
 
 export const ProjectQuerySchema = z.object({

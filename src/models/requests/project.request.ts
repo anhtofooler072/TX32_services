@@ -9,3 +9,12 @@ export interface ProjectReqBody {
   updated_at?: Date;
   participants?: string[];
 }
+
+export interface UpdateProjectReqBody {
+  title: string;
+  description: string;
+  key: string;
+  userId: string;
+  deleted: boolean;
+  participants?: string[];
+}

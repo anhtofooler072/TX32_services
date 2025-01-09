@@ -1,13 +1,27 @@
-import { ProjectReqBody } from "~/models/requests/project.request";
+import {
+  ProjectReqBody,
+  UpdateProjectReqBody,
+} from "~/models/requests/project.request";
 import databaseServices from "./database.service";
 import Project from "~/models/schemas/project.schema";
 import { ObjectId } from "mongodb";
 import Participant from "~/models/schemas/participant.schema";
 import { ErrorWithStatus } from "~/utils/errors.util";
 import HTTP_STATUS_CODES from "~/core/statusCodes";
-import { PROJECTS_MESSAGES } from "~/constants/messages";
+import { PROJECTS_MESSAGES, USERS_MESSAGES } from "~/constants/messages";
+import LogingProjectActivity from "~/models/schemas/loging_project_activity.schema";
+import activityService from "~/services/activity.service";
 
 class ProjectService {
+  async findProjects(query = {}) {
+    return databaseServices.projects
+      .find({
+        ...query,
+        deleted: { $ne: true },
+      })
+      .toArray();
+  }
+
   async checkProjectExist(id: string): Promise<boolean> {
     const project = await databaseServices.projects.findOne({
       _id: new ObjectId(id),
@@ -299,16 +313,16 @@ class ProjectService {
         {
           $match: {
             user_id: userIdObj,
-            status: "active"
-          }
+            status: "active",
+          },
         },
         {
           $lookup: {
             from: "Project",
             localField: "project_id",
             foreignField: "_id",
-            as: "project"
-          }
+            as: "project",
+          },
         },
         { $unwind: "$project" },
         {
@@ -322,11 +336,11 @@ class ProjectService {
                   username: 1,
                   email: 1,
                   avatar_url: 1,
-                }
-              }
+                },
+              },
             ],
-            as: "creator_info"
-          }
+            as: "creator_info",
+          },
         },
         // Add lookup for leader information
         {
@@ -339,10 +353,10 @@ class ProjectService {
                   $expr: {
                     $and: [
                       { $eq: ["$project_id", "$$project_id"] },
-                      { $eq: ["$role", "Leader"] }
-                    ]
-                  }
-                }
+                      { $eq: ["$role", "Leader"] },
+                    ],
+                  },
+                },
               },
               {
                 $lookup: {
@@ -354,17 +368,17 @@ class ProjectService {
                       $project: {
                         username: 1,
                         email: 1,
-                        avatar_url: 1
-                      }
-                    }
+                        avatar_url: 1,
+                      },
+                    },
                   ],
-                  as: "leader_info"
-                }
+                  as: "leader_info",
+                },
               },
-              { $unwind: "$leader_info" }
+              { $unwind: "$leader_info" },
             ],
-            as: "leader"
-          }
+            as: "leader",
+          },
         },
         {
           $project: {
@@ -379,7 +393,7 @@ class ProjectService {
             leader: {
               $let: {
                 vars: {
-                  leaderDoc: { $arrayElemAt: ["$leader", 0] }
+                  leaderDoc: { $arrayElemAt: ["$leader", 0] },
                 },
                 in: {
                   _id: "$$leaderDoc._id",
@@ -389,46 +403,114 @@ class ProjectService {
                   joined_at: "$$leaderDoc.joined_at",
                   username: "$$leaderDoc.leader_info.username",
                   email: "$$leaderDoc.leader_info.email",
-                  avatar_url: "$$leaderDoc.leader_info.avatar_url"
-                }
-              }
-            }
-          }
-        }
+                  avatar_url: "$$leaderDoc.leader_info.avatar_url",
+                },
+              },
+            },
+          },
+        },
       ])
       .toArray();
 
     return projects;
   }
 
-  async updateProjectById(projectId: string, payload: ProjectReqBody) {
-    const { title, description, key } = payload;
+  async updateProjectById(projectId: string, updateData: UpdateProjectReqBody) {
+    const { userId, ...projectUpdateData } = updateData;
+    const existingProject = await databaseServices.projects.findOne({
+      _id: new ObjectId(projectId),
+      deleted: { $ne: true },
+    });
 
-    const result = await databaseServices.projects.updateOne(
-      { _id: new ObjectId(projectId) },
-      {
-        $set: {
-          title,
-          description,
-          key,
-          updated_at: new Date(),
-        },
-      }
-    );
-
-    if (result.matchedCount === 0) {
+    if (!existingProject) {
       throw new ErrorWithStatus({
         message: PROJECTS_MESSAGES.PROJECT_NOT_FOUND,
         status: HTTP_STATUS_CODES.NOT_FOUND,
       });
     }
 
-    return {
-      _id: projectId,
-      title,
-      description,
-      key,
-    };
+    const userInfo = await databaseServices.users.findOne(
+      { _id: new ObjectId(userId) },
+      {
+        projection: {
+          _id: 1,
+          username: 1,
+          email: 1,
+          avatar_url: 1,
+        },
+      }
+    );
+
+    if (!userInfo) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.USER_NOT_FOUND,
+        status: HTTP_STATUS_CODES.NOT_FOUND,
+      });
+    }
+
+    const changes: Record<string, { from: any; to: any }> = {};
+
+    Object.keys(projectUpdateData).forEach((key) => {
+      if (
+        key in existingProject &&
+        existingProject[key as keyof typeof existingProject]?.toString() !==
+          projectUpdateData[key as keyof typeof projectUpdateData]?.toString()
+      ) {
+        changes[key] = {
+          from: existingProject[key as keyof typeof existingProject],
+          to: projectUpdateData[key as keyof typeof projectUpdateData],
+        };
+      }
+    });
+
+    const changeDescriptions = Object.entries(changes).map(
+      ([field, { from, to }]) => {
+        return `${userInfo.username} changed ${field} from "${
+          from || "empty"
+        }" to "${to}"`;
+      }
+    );
+
+    const result = await databaseServices.projects.findOneAndUpdate(
+      { _id: new ObjectId(projectId) },
+      {
+        $set: {
+          ...projectUpdateData,
+          hasBeenModified: true,
+          updated_at: new Date(),
+        },
+        $push: {
+          revisionHistory: {
+            modifiedAt: new Date(),
+            modifiedBy: {
+              _id: new ObjectId(userInfo._id),
+              username: userInfo.username,
+              email: userInfo.email,
+              avatar_url: userInfo?.avatar_url || "",
+            },
+            changes,
+            changeDescription: changeDescriptions.join(", "),
+          },
+        },
+      },
+      { returnDocument: "after" }
+    );
+
+    await activityService.logActivity({
+      projectId,
+      entity: "project",
+      action: "UPDATE",
+      modifiedBy: {
+        _id: new ObjectId(userInfo._id),
+        username: userInfo.username,
+        email: userInfo.email,
+        avatar_url: userInfo?.avatar_url || "",
+      },
+      changes,
+      detail: `Project "${result?.title}" was updated by ${userInfo.username}`,
+    });
+
+    return result;
   }
 
   async deleteProjectById(projectId: string) {
@@ -446,6 +528,97 @@ class ProjectService {
     return {
       _id: projectId,
     };
+  }
+
+  // async deleteProjectById(projectId: string) {
+  //   const session = await databaseServices.client.startSession();
+
+  //   try {
+  //     await session.startTransaction();
+
+  //     // Update project as deleted
+  //     const result = await databaseServices.projects.updateOne(
+  //       { _id: new ObjectId(projectId), deleted: { $ne: true } },
+  //       {
+  //         $set: {
+  //           deleted: true,
+  //           deletedAt: new Date(),
+  //         },
+  //       },
+  //       { session }
+  //     );
+
+  //     if (result.modifiedCount === 0) {
+  //       throw new Error(PROJECTS_MESSAGES.PROJECT_NOT_FOUND);
+  //     }
+
+  //     // Cascade soft delete related entities
+  //     await Promise.all([
+  //       databaseServices.participants.updateMany(
+  //         { projectId: new ObjectId(projectId) },
+  //         { $set: { deleted: true, deletedAt: new Date() } },
+  //         { session }
+  //       ),
+  //       databaseServices.tasks.updateMany(
+  //         { projectId: new ObjectId(projectId) },
+  //         { $set: { deleted: true, deletedAt: new Date() } },
+  //         { session }
+  //       ),
+  //       databaseServices.attachments.updateMany(
+  //         { projectId: new ObjectId(projectId) },
+  //         { $set: { deleted: true, deletedAt: new Date() } },
+  //         { session }
+  //       ),
+  //       databaseServices.logs.updateMany(
+  //         { projectId: new ObjectId(projectId) },
+  //         { $set: { deleted: true, deletedAt: new Date() } },
+  //         { session }
+  //       ),
+  //     ]);
+
+  //     await session.commitTransaction();
+
+  //     return {
+  //       _id: projectId,
+  //       deleted: true,
+  //       deletedAt: new Date(),
+  //     };
+  //   } catch (error) {
+  //     await session.abortTransaction();
+  //     throw error;
+  //   } finally {
+  //     await session.endSession();
+  //   }
+  // }
+
+  async getProjectActivities(projectId: string) {
+    const projectIdObj = new ObjectId(projectId);
+
+    const activities = await databaseServices.activities
+      .aggregate([
+        {
+          $match: {
+            project_id: projectIdObj,
+          },
+        },
+        {
+          $sort: { createdAt: -1 },
+        },
+        {
+          $project: {
+            _id: 1,
+            project_id: 1,
+            action: 1,
+            createdAt: 1,
+            modifiedBy: 1,
+            changes: 1,
+            detail: 1,
+          },
+        },
+      ])
+      .toArray();
+
+    return activities;
   }
 }
 
