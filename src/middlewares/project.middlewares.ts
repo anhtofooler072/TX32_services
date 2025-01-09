@@ -1,7 +1,7 @@
 import { checkSchema, ParamSchema } from "express-validator";
 import { PROJECTS_MESSAGES } from "~/constants/messages";
 import databaseServices from "~/services/database.service";
-import usersService from "~/services/users.service";
+import usersService from "~/services/user.service";
 import { validate } from "~/utils/validations.util";
 import { ObjectId } from "mongodb";
 import { TokenPayload } from "~/models/requests/user.request";
@@ -37,6 +37,27 @@ class ProjectMiddleware {
         "Project title length must be between 1 and 200 characters",
     },
     trim: true,
+    custom: {
+      options: async (value) => {
+        if (!NAME_REGEXP.test(value)) {
+          throw new Error(
+            PROJECTS_MESSAGES.TITLE_INVALID ||
+              "Project title must contain only letters, numbers, and spaces"
+          );
+        }
+
+        const project = await databaseServices.projects.findOne({
+          title: value,
+        });
+
+        if (project) {
+          throw new Error(
+            PROJECTS_MESSAGES.TITLE_EXISTS || "Title already exists"
+          );
+        }
+        return true;
+      },
+    },
   };
 
   private descriptionSchema: ParamSchema = {
@@ -85,7 +106,7 @@ class ProjectMiddleware {
         if (!Array.isArray(participants)) {
           throw new Error(
             PROJECTS_MESSAGES.PARTICIPANTS_INVALID ||
-            "Participants must be an array"
+              "Participants must be an array"
           );
         }
 
@@ -142,57 +163,60 @@ class ProjectMiddleware {
       title: {
         optional: true,
         isString: {
-          errorMessage: 'Title must be string'
+          errorMessage: "Title must be string",
         },
         trim: true,
         isLength: {
           options: { min: 1, max: 50 },
-          errorMessage: 'Title length must be between 1 and 50 characters'
-        }
+          errorMessage: "Title length must be between 1 and 50 characters",
+        },
       },
       description: {
         optional: true,
         isString: {
-          errorMessage: 'Description must be string'
+          errorMessage: "Description must be string",
         },
         trim: true,
         isLength: {
           options: { min: 1, max: 500 },
-          errorMessage: 'Description length must be between 1 and 500 characters'
-        }
+          errorMessage:
+            "Description length must be between 1 and 500 characters",
+        },
       },
       key: {
         optional: true,
         isString: {
-          errorMessage: 'Key must be string'
+          errorMessage: "Key must be string",
         },
         trim: true,
         isLength: {
           options: { min: 2, max: 10 },
-          errorMessage: 'Key length must be between 2 and 10 characters'
+          errorMessage: "Key length must be between 2 and 10 characters",
         },
         matches: {
-          options: /^[A-Z0-9\-_]+$/,
-          errorMessage: 'Key must contain only uppercase letters and numbers'
+          options: /^[A-Z0-9\-_ ]+$/,
+          errorMessage: "Key must contain only uppercase letters and numbers",
         },
         custom: {
           options: async (value, { req }) => {
-            if (!value) return true
+            if (!value) return true;
             const project = await databaseServices.projects.findOne({
               key: value,
               _id: {
-                $ne: req.params?.project_id ? new ObjectId(String(req.params.project_id)) : undefined
-              }
-            })
+                $ne: req.params?.project_id
+                  ? new ObjectId(String(req.params.projectId))
+                  : undefined,
+              },
+            });
             if (project) {
-              throw new Error('Key already exists')
+              throw new Error("Key already exists");
             }
-            return true
-          }
-        }
-      }
+            return true;
+          },
+        },
+      },
     })
-  )
+  );
 
   async verifyUserProjectAccess(
     req: Request,
@@ -266,24 +290,24 @@ class ProjectMiddleware {
 
   checkProjectPermissions(allowedRoles: string[]) {
     return async (req: Request, res: Response, next: NextFunction) => {
-      const { user_id } = req.decoded_authorization as TokenPayload
-      const { project_id } = req.params
+      const { user_id } = req.decoded_authorization as TokenPayload;
+      const { projectId } = req.params;
 
       const project = await databaseServices.participants.findOne({
-        project_id: new ObjectId(project_id),
+        project_id: new ObjectId(projectId),
         user_id: new ObjectId(user_id),
-        role: { $in: allowedRoles }
-      })
+        role: { $in: allowedRoles },
+      });
 
       if (!project) {
         throw new ErrorWithStatus({
           message: REASON_PHRASES.FORBIDDEN,
-          status: HTTP_STATUS_CODES.FORBIDDEN
-        })
+          status: HTTP_STATUS_CODES.FORBIDDEN,
+        });
       }
 
-      next()
-    }
+      next();
+    };
   }
 }
 
