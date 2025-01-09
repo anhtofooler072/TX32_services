@@ -12,7 +12,7 @@ const TaskSchema = new Schema({
     type: String,
     default: "",
   },
-  project: {
+  project_id: {
     type: ObjectId,
     ref: collections.PROJECT,
     required: true,
@@ -59,7 +59,7 @@ export interface ITask extends Document {
   _id: ObjectId;
   title: string;
   description: string;
-  project: ObjectId;
+  project_id: ObjectId;
   parentTask: ObjectId;
   creator: ObjectId;
   type: string;
