@@ -6,7 +6,7 @@ import cors from 'cors'
 import rootRouterV1 from "~/routes";
 import { envConfig } from "~/constants/config";
 import databaseServices from "~/services/database.service";
-import { defaultErrorHandler } from "~/middlewares/errors.middleware";
+import { defaultErrorHandler } from "~/middlewares/error.middlewares";
 import { NOT_FOUND } from "./core/error.response";
 
 // Khởi tạo socket service

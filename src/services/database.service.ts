@@ -1,41 +1,71 @@
-"use strict"
+"use strict";
 
-import { Collection, Db, MongoClient } from 'mongodb'
-import collections from '~/constants/collections'
-import { envConfig } from '~/constants/config'
-import { IToken } from '~/models/schemas/token.schema'
-import { IUser } from '~/models/schemas/user.schema'
+import { Collection, Db, MongoClient } from "mongodb";
+import collections from "~/constants/collections";
+import { envConfig } from "~/constants/config";
+import { ILogingProjectActivity } from "~/models/schemas/loging_project_activity.schema";
+import { IParticipant } from "~/models/schemas/participant.schema";
+import { IProject } from "~/models/schemas/project.schema";
+import { IProjectAttachment } from "~/models/schemas/project_attachment.schema";
+import { ITask } from "~/models/schemas/task.schema";
+import { IToken } from "~/models/schemas/token.schema";
+import { IUser } from "~/models/schemas/user.schema";
 
-const uri = `mongodb+srv://${envConfig.dbUsername}:${envConfig.dbPassword}@final-semester.pmo5t.mongodb.net/${envConfig.dbName}?retryWrites=true&w=majority&appName=final-semester`
+const uri = `mongodb+srv://${envConfig.dbUsername}:${envConfig.dbPassword}@final-semester.pmo5t.mongodb.net/${envConfig.dbName}?retryWrites=true&w=majority&appName=final-semester`;
 
 class DatabaseServices {
-    private client: MongoClient
-    private db: Db
+  private client: MongoClient;
+  private db: Db;
 
-    constructor() {
-        this.client = new MongoClient(uri)
-        this.db = this.client.db(envConfig.dbName)
-    }
+  public getClient() {
+    return this.client;
+  }
 
-    async connect() {
-        try {
-            await this.client.connect()
-            await this.db.command({ ping: 1 })
-            console.log('Pinged your deployment. You successfully connected to MongoDB!')
-        } catch (error) {
-            console.log('Error connecting to the database', error)
-            throw error
-        }
-    }
+  constructor() {
+    this.client = new MongoClient(uri);
+    this.db = this.client.db(envConfig.dbName);
+  }
 
-    get users(): Collection<IUser> {
-        return this.db.collection(collections.USERS)
+  async connect() {
+    try {
+      await this.client.connect();
+      await this.db.command({ ping: 1 });
+      console.log(
+        "Pinged your deployment. You successfully connected to MongoDB!"
+      );
+    } catch (error) {
+      console.log("Error connecting to the database", error);
+      throw error;
     }
+  }
 
-    get tokens(): Collection<IToken> {
-        return this.db.collection(collections.TOKENS)
-    }
+  get users(): Collection<IUser> {
+    return this.db.collection(collections.USER);
+  }
+
+  get tokens(): Collection<IToken> {
+    return this.db.collection(collections.TOKEN);
+  }
+
+  get projects(): Collection<IProject> {
+    return this.db.collection(collections.PROJECT);
+  }
+
+  get participants(): Collection<IParticipant> {
+    return this.db.collection(collections.PARTICIPANT);
+  }
+
+  get activities(): Collection<ILogingProjectActivity> {
+    return this.db.collection(collections.LOGING_PROJECT_ACTIVITY);
+  }
+
+  get tasks(): Collection<ITask> {
+    return this.db.collection(collections.TASK);
+  }
+
+  get project_attachments(): Collection<IProjectAttachment> {
+    return this.db.collection(collections.ATTACHMENT);
+  }
 }
-const databaseServices = new DatabaseServices()
-export default databaseServices
-
+const databaseServices = new DatabaseServices();
+export default databaseServices;

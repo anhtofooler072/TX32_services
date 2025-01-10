@@ -53,8 +53,8 @@ const UserSchema = new Schema({
     },
     role: {
         type: String,
-        enum: ['leader', 'staff'],
-        default: 'staff',
+        enum: ['admin', 'user'],
+        default: 'user',
     },
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
@@ -80,6 +80,6 @@ export interface IUser extends Document {
     lastLoginTime: Date
 }
 
-const User = model<IUser>(collections.USERS, UserSchema)
+const User = model<IUser>(collections.USER, UserSchema)
 
 export default User
