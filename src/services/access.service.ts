@@ -2,7 +2,7 @@
 
 import { ObjectId } from "mongodb";
 import { LoginReqBody, RegisterReqBody } from "~/models/requests/user.request";
-import User from "~/models/schemas/user.schema";
+import User, { IUser } from "~/models/schemas/user.schema";
 import databaseServices from "./database.service";
 import { tokenType, userVerificationStatus } from "~/constants/enums";
 import { envConfig } from "~/constants/config";
@@ -246,6 +246,63 @@ class AccessService {
       access_token,
       refresh_token,
     };
+  }
+
+  async googleLogin(user: IUser) {
+    const [access_token, refresh_token] = await this.signAccessAndRefreshToken({
+      user_id: user._id.toString(),
+      verify: userVerificationStatus.Verified,
+      role: user.role || "user",
+    });
+
+    await databaseServices.tokens.deleteMany({ user_id: user._id, type: tokenType.RefreshToken })
+
+    // thêm vào blacklist
+
+    const { exp } = await this.decodeRefreshToken(refresh_token);
+
+    await databaseServices.tokens.insertOne(
+      new Token({
+        user_id: user._id.toString(),
+        token: refresh_token,
+        type: tokenType.RefreshToken,
+        expires_at: new Date(exp * 1000),
+      })
+    );
+
+    return {
+      access_token,
+      refresh_token,
+    };
+  }
+
+  async logout({
+    user_id,
+    refresh_token,
+    // req_metadata
+  }: {
+    user_id: string
+    refresh_token: string
+    // req_metadata: {
+    //   user_agent?: string
+    //   ip_address?: string
+    // }
+  }) {
+
+    databaseServices.tokens.deleteOne({
+      _id: new ObjectId(user_id) as any,
+      token: refresh_token
+    })
+
+    databaseServices.users.updateOne(
+      { _id: new ObjectId(user_id) },
+      {
+        $set: {
+          lastLoginTime: new Date(),
+          status: "offline",
+        }
+      }
+    )
   }
 }
 const accessService = new AccessService();
