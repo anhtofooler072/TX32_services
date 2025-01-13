@@ -52,10 +52,10 @@ const avatarURLSchema: ParamSchema = {
   },
   isLength: {
     options: {
-      min: 1,
+      min: 0,
       max: 500,
     },
-    errorMessage: "Avatar URL length must be between 1 and 500 characters",
+    errorMessage: "Avatar URL length must be between 0 and 500 characters",
   },
   trim: true,
 };
@@ -204,43 +204,43 @@ export const refreshTokenValidation = validate(
             if (!value) {
               throw new ErrorWithStatus({
                 message: USERS_MESSAGES.REFRESH_TOKEN_REQUIRED,
-                status: HTTP_STATUS_CODES.UNAUTHORIZED
-              })
+                status: HTTP_STATUS_CODES.UNAUTHORIZED,
+              });
             }
             try {
               // kiểm tra refresh token có hợp lệ không
               const refreshTokenExist = await databaseServices.tokens.findOne({
                 token: value,
-                type: tokenType.RefreshToken
-              })
+                type: tokenType.RefreshToken,
+              });
 
               if (!refreshTokenExist) {
                 throw new ErrorWithStatus({
                   message: USERS_MESSAGES.REFRESH_TOKEN_IS_INVALID,
-                  status: HTTP_STATUS_CODES.UNAUTHORIZED
-                })
+                  status: HTTP_STATUS_CODES.UNAUTHORIZED,
+                });
               }
 
               const decoded_refresh_token = await verifyToken({
                 token: value,
-                secretOrPublickey: envConfig.jwtSecretRefreshToken
-              })
+                secretOrPublickey: envConfig.jwtSecretRefreshToken,
+              });
 
-              req.decoded_refresh_token = decoded_refresh_token
+              req.decoded_refresh_token = decoded_refresh_token;
             } catch (error) {
               throw new ErrorWithStatus({
                 message: (error as JsonWebTokenError).message,
-                status: HTTP_STATUS_CODES.UNAUTHORIZED
-              })
+                status: HTTP_STATUS_CODES.UNAUTHORIZED,
+              });
             }
-            return true
-          }
-        }
-      }
+            return true;
+          },
+        },
+      },
     },
-    ['body']
+    ["body"]
   )
-)
+);
 
 // export const verifiedUserValidation = (req: Request, res: Response, next: NextFunction) => {
 //   const { verify } = req.decoded_authorization as TokenPayload
