@@ -31,20 +31,29 @@ class AccessController {
         const queryString = (await import('querystring')).default
         const user = req.body;
 
-        if (!user || !req.user) {
+        if (!user) {
             throw new ErrorWithStatus({
                 status: HTTP_STATUS_CODES.UNAUTHORIZED,
                 message: USERS_MESSAGES.USER_NOT_FOUND
             })
         }
+
         const { access_token, refresh_token } = await accessService.googleLogin(req.user);
+
+        const redirectUrl = envConfig.googleRedirectClientUrl;
+        if (!redirectUrl) {
+            throw new ErrorWithStatus({
+                status: HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR,
+                message: 'Redirect URL is not configured'
+            })
+        }
 
         const qs = queryString.stringify({
             access_token,
             refresh_token,
-            status: 200
+            status: HTTP_STATUS_CODES.OK
         })
-        res.redirect(`${envConfig.googleRedirectClientUrl}?${qs}`)
+        res.redirect(`${redirectUrl}?${qs}`);
     }
 
     logout = async (req: Request, res: Response) => {

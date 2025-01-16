@@ -248,7 +248,26 @@ class AccessService {
     };
   }
 
-  async googleLogin(user: IUser) {
+  async googleLogin(user: any) {
+    console.log("user", user);
+    if (!user) {
+      throw new ErrorWithStatus({
+        status: HTTP_STATUS_CODES.UNAUTHORIZED,
+        message: USERS_MESSAGES.USER_NOT_FOUND,
+      });
+    }
+
+    // update last login time and status
+    await databaseServices.users.updateOne(
+      { _id: new ObjectId(user._id) },
+      {
+        $set: {
+          lastLoginTime: new Date(),
+          status: "online",
+        },
+      }
+    );
+
     const [access_token, refresh_token] = await this.signAccessAndRefreshToken({
       user_id: user._id.toString(),
       verify: userVerificationStatus.Verified,
@@ -256,8 +275,6 @@ class AccessService {
     });
 
     await databaseServices.tokens.deleteMany({ user_id: user._id, type: tokenType.RefreshToken })
-
-    // thêm vào blacklist
 
     const { exp } = await this.decodeRefreshToken(refresh_token);
 
