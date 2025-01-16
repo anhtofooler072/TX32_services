@@ -42,7 +42,7 @@ class ProjectMiddleware {
         if (!NAME_REGEXP.test(value)) {
           throw new Error(
             PROJECTS_MESSAGES.TITLE_INVALID ||
-              "Project title must contain only letters, numbers, and spaces"
+            "Project title must contain only letters, numbers, and spaces"
           );
         }
 
@@ -106,7 +106,7 @@ class ProjectMiddleware {
         if (!Array.isArray(participants)) {
           throw new Error(
             PROJECTS_MESSAGES.PARTICIPANTS_INVALID ||
-              "Participants must be an array"
+            "Participants must be an array"
           );
         }
 
@@ -367,6 +367,20 @@ class ProjectMiddleware {
       },
     });
   }
+
+  createPublicRateLimiter = ({ windowMs, max }: { windowMs?: number; max?: number }) => {
+    return rateLimit({
+      windowMs: windowMs || 15 * 60 * 1000,
+      max: max || 100,
+      message: {
+        status: "error",
+        message: PROJECTS_MESSAGES.TOO_MANY_REQUESTS,
+      },
+      standardHeaders: true,
+      legacyHeaders: false,
+      keyGenerator: (req: Request) => req.ip || '',
+    });
+  };
 
   public validateProjectQuery(schema: AnyZodObject) {
     return async (req: Request, res: Response, next: NextFunction) => {
