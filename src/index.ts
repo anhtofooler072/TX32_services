@@ -8,7 +8,7 @@ import { envConfig } from "~/constants/config";
 import databaseServices from "~/services/database.service";
 import { defaultErrorHandler } from "~/middlewares/error.middlewares";
 import { NOT_FOUND } from "./core/error.response";
-import "~/helpers/passport";
+import "~/config/passport";
 import passport from "passport";
 
 // Khởi tạo socket service
