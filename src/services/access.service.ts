@@ -226,6 +226,17 @@ class AccessService {
       role: user.role || "user",
     });
 
+    // câp nhật trạng thái và thời gian đăng nhập cuối cùng
+    await databaseServices.users.updateOne(
+      { _id: new ObjectId(user._id.toString()) },
+      {
+        $set: {
+          last_login_time: new Date(),
+          status: "online",
+        },
+      }
+    );
+
     await databaseServices.tokens.deleteMany({
       user_id: user._id,
       type: tokenType.RefreshToken,
@@ -262,7 +273,7 @@ class AccessService {
       { _id: new ObjectId(user._id) },
       {
         $set: {
-          lastLoginTime: new Date(),
+          last_login_time: new Date(),
           status: "online",
         },
       }
@@ -296,14 +307,9 @@ class AccessService {
   async logout({
     user_id,
     refresh_token,
-    // req_metadata
   }: {
     user_id: string
     refresh_token: string
-    // req_metadata: {
-    //   user_agent?: string
-    //   ip_address?: string
-    // }
   }) {
 
     databaseServices.tokens.deleteOne({
@@ -315,7 +321,7 @@ class AccessService {
       { _id: new ObjectId(user_id) },
       {
         $set: {
-          lastLoginTime: new Date(),
+          last_login_time: new Date(),
           status: "offline",
         }
       }
