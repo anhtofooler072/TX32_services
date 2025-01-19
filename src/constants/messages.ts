@@ -130,3 +130,36 @@ export const PROJECTS_MESSAGES = {
 
   GET_PROJECT_ACTIVITIES_SUCCESSFULLY: "Get project activities successfully",
 } as const;
+
+export const TASKS_MESSAGES = {
+  // task
+  GET_ALL_TASKS_SUCCESSFULLY: "Get all tasks successfully",
+  GET_TASKS_SUCCESSFULLY: "Get tasks successfully",
+  GET_TASK_SUCCESSFULLY: "Get task successfully",
+  TASK_NOT_FOUND: "Task not found",
+  TASK_ALREADY_EXIST: "Task already exist",
+  TASK_ID_REQUIRED: "Task ID is required",
+  TASK_DELETED: "Task has been soft deleted.",
+  TASK_ALREADY_DELETED: "Task is already marked as deleted.",
+
+  TITLE_REQUIRED: "Title is required",
+  TITLE_MUST_BE_STRING: "Title must be a string",
+  TITLE_LENGTH: "Title length must be between 1 and 200 characters",
+  TITLE_INVALID: "Title must contain only letters, numbers, and spaces",
+  DESCRIPTION_MUST_BE_STRING: "Description must be a string",
+  DESCRIPTION_LENGTH: "Description cannot exceed 1000 characters",
+  PROJECT_ID_REQUIRED: "Project ID is required",
+  PROJECT_NOT_FOUND: "Project not found",
+  TYPE_REQUIRED: "Type is required",
+  TYPE_INVALID: "Type is invalid",
+  TYPE_MUST_BE_STRING: "Type must be a string",
+  TYPE_LENGTH: "Type length must be between 1 and 100 characters",
+  TYPE_EXISTS: "Type already exists",
+  ASSIGNEE_REQUIRED: "Assignee is required",
+  ASSIGNEE_NOT_FOUND: "Assignee not found",
+  STATUS_INVALID: "Status is invalid",
+
+  CREATE_TASK_SUCCESSFULLY: "Create task successfully",
+  UPDATE_TASK_SUCCESSFULLY: "Update task successfully",
+  DELETE_TASK_SUCCESSFULLY: "Delete task successfully",
+} as const;
