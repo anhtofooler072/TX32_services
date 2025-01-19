@@ -322,7 +322,7 @@ class ProjectService {
           $lookup: {
             from: collections.TASK,
             localField: "_id",
-            foreignField: "project",
+            foreignField: "project_id",
             as: "tasks",
           },
         },
@@ -455,7 +455,7 @@ class ProjectService {
       if (
         key in existingProject &&
         existingProject[key as keyof typeof existingProject]?.toString() !==
-          projectUpdateData[key as keyof typeof projectUpdateData]?.toString()
+        projectUpdateData[key as keyof typeof projectUpdateData]?.toString()
       ) {
         changes[key] = {
           from: existingProject[key as keyof typeof existingProject],
@@ -466,9 +466,8 @@ class ProjectService {
 
     const changeDescriptions = Object.entries(changes).map(
       ([field, { from, to }]) => {
-        return `${userInfo.username} changed ${field} from "${
-          from || "empty"
-        }" to "${to}"`;
+        return `${userInfo.username} changed ${field} from "${from || "empty"
+          }" to "${to}"`;
       }
     );
 
