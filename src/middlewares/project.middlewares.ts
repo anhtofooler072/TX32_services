@@ -325,8 +325,6 @@ class ProjectMiddleware {
         status: HTTP_STATUS_CODES.FORBIDDEN,
       });
     }
-
-    req.project = project;
     return next();
   }
 
