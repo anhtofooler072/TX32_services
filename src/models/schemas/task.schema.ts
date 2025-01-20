@@ -2,15 +2,39 @@ import { Schema, model, Document } from "mongoose";
 import { ObjectId } from "mongodb";
 import collections from "~/constants/collections";
 
+export enum TaskType {
+  TASK = "Task",
+  SUBTASK = "Subtask",
+  BUG = "Bug",
+  EPIC = "Epic",
+  STORY = "Story"
+}
+
+export enum TaskStatus {
+  TODO = "To Do",
+  IN_PROGRESS = "In Progress",
+  COMPLETED = "Completed"
+}
+
+export enum PriorityLevel {
+  LOW = "Low",
+  MEDIUM = "Medium",
+  HIGH = "High",
+  URGENT = "Urgent"
+}
+
 const TaskSchema = new Schema({
   title: {
     type: String,
     required: true,
     index: true,
+    trim: true,
+    maxlength: 255
   },
   description: {
     type: String,
     default: "",
+    trim: true,
   },
   project_id: {
     type: ObjectId,
@@ -22,6 +46,24 @@ const TaskSchema = new Schema({
     ref: collections.TASK,
     default: null,
   },
+  ancestors: [{
+    type: ObjectId,
+    ref: collections.TASK,
+    index: true
+  }],
+  level: {
+    type: Number,
+    default: 0,
+    index: true
+  },
+  hasChildren: {
+    type: Boolean,
+    default: false
+  },
+  childCount: {
+    type: Number,
+    default: 0
+  },
   creator: {
     type: ObjectId,
     ref: collections.USER,
@@ -29,25 +71,29 @@ const TaskSchema = new Schema({
   },
   type: {
     type: String,
-    enum: ["Task", "Subtask", "Bug", "Epic", "Story"],
-    required: true,
+    enum: Object.values(TaskType),
+    required: true
   },
   assignee: {
     type: ObjectId,
     ref: collections.USER,
-    required: true,
   },
   status: {
     type: String,
-    enum: ["To Do", "In Progress", "Completed"],
-    default: "To Do",
+    enum: Object.values(TaskStatus),
+    default: TaskStatus.TODO
   },
   priority: {
     type: String,
-    enum: ["Low", "Medium", "High", "Urgent"],
-    default: "Medium",
+    enum: Object.values(PriorityLevel),
+    default: PriorityLevel.MEDIUM
   },
-  progress: { type: Number, min: 0, max: 100 },
+  progress: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
   dueDate: { type: Date },
   deleted: { type: Boolean, default: false },
   deletedAt: { type: Date, default: null },
@@ -60,18 +106,22 @@ export interface ITask extends Document {
   title: string;
   description: string;
   project_id: ObjectId;
-  parentTask: ObjectId;
+  parentTask: ObjectId | null;
+  ancestors: ObjectId[];
+  level: number;
+  hasChildren: boolean;
+  childCount: number;
   creator: ObjectId;
-  type: string;
+  type: TaskType;
   assignee: ObjectId;
-  status: string;
-  priority: string;
+  status: TaskStatus;
+  priority: PriorityLevel;
   progress: number;
   dueDate: Date;
-  created_at: Date;
-  updated_at: Date;
   deleted?: boolean;
   deletedAt?: Date;
+  created_at: Date;
+  updated_at: Date;
 }
 
 const Task = model<ITask>(collections.TASK, TaskSchema);
