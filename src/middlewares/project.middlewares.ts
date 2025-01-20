@@ -341,7 +341,7 @@ class ProjectMiddleware {
 
     if (!project) {
       throw new ErrorWithStatus({
-        message: PROJECTS_MESSAGES.PROJECT_NOT_FOUND,
+        message: PROJECTS_MESSAGES.PROJECT_NOT_FOUND_OR_DELETED,
         status: HTTP_STATUS_CODES.NOT_FOUND,
       });
     }

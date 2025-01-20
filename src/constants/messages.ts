@@ -82,6 +82,7 @@ export const PROJECTS_MESSAGES = {
   PROJECT_ID_REQUIRED: "Project ID is required",
   PROJECT_DELETED: "Project has been soft deleted.",
   PROJECT_ALREADY_DELETED: "Project is already marked as deleted.",
+  PROJECT_NOT_FOUND_OR_DELETED: "Project not found or has been deleted",
 
   CREATE_PROJECT_SUCCESSFULLY: "Create project successfully",
   GET_PROJECT_SUCCESSFULLY: "Get project successfully",
