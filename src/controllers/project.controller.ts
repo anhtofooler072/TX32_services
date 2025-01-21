@@ -159,7 +159,8 @@ class ProjectController {
   };
 
   deleteTaskById = async (req: Request, res: Response) => {
-    const result = await taskService.deleteTaskById(req.params.taskId);
+    const { user_id } = req.decoded_authorization as TokenPayload;
+    const result = await taskService.deleteTaskById(req.params.taskId, user_id);
     new OK({
       message: TASKS_MESSAGES.DELETE_TASK_SUCCESSFULLY,
       metadata: result,
