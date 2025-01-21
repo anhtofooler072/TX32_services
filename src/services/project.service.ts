@@ -22,6 +22,17 @@ class ProjectService {
       .toArray();
   }
 
+  async checkUserAccessToProject(userId: string, projectId: string): Promise<boolean> {
+    const participant = await databaseServices.participants.findOne({
+      project_id: new ObjectId(projectId),
+      user_id: new ObjectId(userId),
+      status: "active",
+      deleted: false,
+    });
+
+    return !!participant;
+  }
+
   async checkProjectExist(id: string): Promise<boolean> {
     const project = await databaseServices.projects.findOne({
       _id: new ObjectId(id),
@@ -794,6 +805,7 @@ class ProjectService {
 
     return updatedParticipant;
   }
+
 }
 
 const projectService = new ProjectService();
