@@ -130,6 +130,8 @@ export const PROJECTS_MESSAGES = {
   TOO_MANY_REQUESTS: "Too many requests",
 
   GET_PROJECT_ACTIVITIES_SUCCESSFULLY: "Get project activities successfully",
+
+  UNAUTHORIZED_ACTION: "You do not have permission to perform this action",
 } as const;
 
 export const TASKS_MESSAGES = {
@@ -163,4 +165,7 @@ export const TASKS_MESSAGES = {
   CREATE_TASK_SUCCESSFULLY: "Create task successfully",
   UPDATE_TASK_SUCCESSFULLY: "Update task successfully",
   DELETE_TASK_SUCCESSFULLY: "Delete task successfully",
+
+  FAILED_TO_DELETE_TASK: "Failed to delete task",
+  UNAUTHORIZED_TASK_DELETION: "You do not have permission to delete tasks",
 } as const;
