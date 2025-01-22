@@ -2,7 +2,7 @@
 
 import { ObjectId } from "mongodb";
 import { LoginReqBody, RegisterReqBody } from "~/models/requests/user.request";
-import User from "~/models/schemas/user.schema";
+import User, { IUser } from "~/models/schemas/user.schema";
 import databaseServices from "./database.service";
 import { tokenType, userVerificationStatus } from "~/constants/enums";
 import { envConfig } from "~/constants/config";
@@ -226,6 +226,17 @@ class AccessService {
       role: user.role || "user",
     });
 
+    // câp nhật trạng thái và thời gian đăng nhập cuối cùng
+    await databaseServices.users.updateOne(
+      { _id: new ObjectId(user._id.toString()) },
+      {
+        $set: {
+          last_login_time: new Date(),
+          status: "online",
+        },
+      }
+    );
+
     await databaseServices.tokens.deleteMany({
       user_id: user._id,
       type: tokenType.RefreshToken,
@@ -246,6 +257,75 @@ class AccessService {
       access_token,
       refresh_token,
     };
+  }
+
+  async googleLogin(user: any) {
+    console.log("user", user);
+    if (!user) {
+      throw new ErrorWithStatus({
+        status: HTTP_STATUS_CODES.UNAUTHORIZED,
+        message: USERS_MESSAGES.USER_NOT_FOUND,
+      });
+    }
+
+    // update last login time and status
+    await databaseServices.users.updateOne(
+      { _id: new ObjectId(user._id) },
+      {
+        $set: {
+          last_login_time: new Date(),
+          status: "online",
+        },
+      }
+    );
+
+    const [access_token, refresh_token] = await this.signAccessAndRefreshToken({
+      user_id: user._id.toString(),
+      verify: userVerificationStatus.Verified,
+      role: user.role || "user",
+    });
+
+    await databaseServices.tokens.deleteMany({ user_id: user._id, type: tokenType.RefreshToken })
+
+    const { exp } = await this.decodeRefreshToken(refresh_token);
+
+    await databaseServices.tokens.insertOne(
+      new Token({
+        user_id: user._id.toString(),
+        token: refresh_token,
+        type: tokenType.RefreshToken,
+        expires_at: new Date(exp * 1000),
+      })
+    );
+
+    return {
+      access_token,
+      refresh_token,
+    };
+  }
+
+  async logout({
+    user_id,
+    refresh_token,
+  }: {
+    user_id: string
+    refresh_token: string
+  }) {
+
+    databaseServices.tokens.deleteOne({
+      _id: new ObjectId(user_id) as any,
+      token: refresh_token
+    })
+
+    databaseServices.users.updateOne(
+      { _id: new ObjectId(user_id) },
+      {
+        $set: {
+          last_login_time: new Date(),
+          status: "offline",
+        }
+      }
+    )
   }
 }
 const accessService = new AccessService();

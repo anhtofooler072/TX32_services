@@ -8,6 +8,8 @@ import { envConfig } from "~/constants/config";
 import databaseServices from "~/services/database.service";
 import { defaultErrorHandler } from "~/middlewares/error.middlewares";
 import { NOT_FOUND } from "./core/error.response";
+import "~/config/passport";
+import passport from "passport";
 
 // Khởi tạo socket service
 const app: Application = express();
@@ -17,6 +19,7 @@ app.use(helmet())
 app.use(compression())
 app.use(morgan('dev'))
 app.use(cors())
+app.use(passport.initialize())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 

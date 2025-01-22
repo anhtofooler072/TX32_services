@@ -77,7 +77,7 @@ export interface IUser extends Document {
     role: string
     created_at: Date
     updated_at: Date
-    lastLoginTime: Date
+    last_login_time: Date
 }
 
 const User = model<IUser>(collections.USER, UserSchema)

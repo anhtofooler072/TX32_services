@@ -4,10 +4,13 @@ import { NAME_REGEXP } from "~/helpers/regex";
 import { validate } from "~/utils/validations.util";
 import usersService from "~/services/user.service";
 import { ErrorWithStatus } from "~/utils/errors.util";
-import HTTP_STATUS_CODES from "~/core/statusCodes";
+import HTTP_STATUS_CODES_CODES from "~/core/statusCodes";
 import { envConfig } from "~/constants/config";
 import { verifyToken } from "~/utils/tokens.util";
 import { JsonWebTokenError } from "jsonwebtoken";
+import HTTP_STATUS_CODES from "~/core/statusCodes";
+import databaseServices from "~/services/database.service";
+import { tokenType } from "~/constants/enums";
 
 const usernameSchema: ParamSchema = {
   notEmpty: {
@@ -49,10 +52,10 @@ const avatarURLSchema: ParamSchema = {
   },
   isLength: {
     options: {
-      min: 1,
+      min: 0,
       max: 500,
     },
-    errorMessage: "Avatar URL length must be between 1 and 500 characters",
+    errorMessage: "Avatar URL length must be between 0 and 500 characters",
   },
   trim: true,
 };
@@ -165,7 +168,7 @@ export const accessTokenValidation = validate(
             if (!access_token) {
               throw new ErrorWithStatus({
                 message: USERS_MESSAGES.ACCESS_TOKEN_REQUIRED,
-                status: HTTP_STATUS_CODES.UNAUTHORIZED,
+                status: HTTP_STATUS_CODES_CODES.UNAUTHORIZED,
               });
             }
 
@@ -179,7 +182,7 @@ export const accessTokenValidation = validate(
             } catch (error) {
               throw new ErrorWithStatus({
                 message: (error as JsonWebTokenError).message,
-                status: HTTP_STATUS_CODES.UNAUTHORIZED,
+                status: HTTP_STATUS_CODES_CODES.UNAUTHORIZED,
               });
             }
             return true;
@@ -190,3 +193,64 @@ export const accessTokenValidation = validate(
     ["headers"]
   )
 );
+
+export const refreshTokenValidation = validate(
+  checkSchema(
+    {
+      refresh_token: {
+        trim: true,
+        custom: {
+          options: async (value: string, { req }) => {
+            if (!value) {
+              throw new ErrorWithStatus({
+                message: USERS_MESSAGES.REFRESH_TOKEN_REQUIRED,
+                status: HTTP_STATUS_CODES.UNAUTHORIZED,
+              });
+            }
+            try {
+              // kiểm tra refresh token có hợp lệ không
+              const refreshTokenExist = await databaseServices.tokens.findOne({
+                token: value,
+                type: tokenType.RefreshToken,
+              });
+
+              if (!refreshTokenExist) {
+                throw new ErrorWithStatus({
+                  message: USERS_MESSAGES.REFRESH_TOKEN_IS_INVALID,
+                  status: HTTP_STATUS_CODES.UNAUTHORIZED,
+                });
+              }
+
+              const decoded_refresh_token = await verifyToken({
+                token: value,
+                secretOrPublickey: envConfig.jwtSecretRefreshToken,
+              });
+
+              req.decoded_refresh_token = decoded_refresh_token;
+            } catch (error) {
+              throw new ErrorWithStatus({
+                message: (error as JsonWebTokenError).message,
+                status: HTTP_STATUS_CODES.UNAUTHORIZED,
+              });
+            }
+            return true;
+          },
+        },
+      },
+    },
+    ["body"]
+  )
+);
+
+// export const verifiedUserValidation = (req: Request, res: Response, next: NextFunction) => {
+//   const { verify } = req.decoded_authorization as TokenPayload
+//   if (verify !== userVerificationStatus.Verified) {
+//     return next(
+//       new ErrorWithStatus({
+//         message: USERS_MESSAGES.USER_NOT_VERIFIED,
+//         status: HTTP_STATUS_CODES.FORBIDDEN
+//       })
+//     )
+//   }
+//   next()
+// }

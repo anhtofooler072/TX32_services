@@ -23,4 +23,13 @@ export const envConfig = {
     jwtSecretEmailVerifyToken: process.env.JWT_SECRET_EMAIL_VERIFY_TOKEN as string,
     emailVerifyTokenExpiresIn: process.env.JWT_EXPIRES_IN_EMAIL_VERIFY_TOKEN as string,
 
+    // google oauth20
+    googleClientId: process.env.GOOGLE_CLIENT_ID as string,
+    googleClientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    googleCallbackURLDev: process.env.GOOGLE_CALLBACK_URL_DEV as string,
+    googleCallbackURLProd: process.env.GOOGLE_CALLBACK_URL_PROD as string,
+    googleRedirectClientUrl: process.env.GOOGLE_REDIRECT_CLIENT_URL as string,
+
+    nodeEnv: process.env.NODE_ENV as string,
+
 } as const
