@@ -118,54 +118,6 @@ class ProjectController {
       metadata: result,
     }).send(res);
   };
-
-  /*
-  * -------------------------------- Project task controller --------------------------------
-  */
-
-  createTaskInProject = async (req: Request, res: Response) => {
-    const { user_id } = req.decoded_authorization as TokenPayload;
-    const projectId = req.params.projectId;
-    const taskData = { ...req.body, project_id: projectId, creator: user_id };
-    const result = await taskService.createTaskInProject(taskData);
-    new CREATED({
-      message: TASKS_MESSAGES.CREATE_TASK_SUCCESSFULLY,
-      metadata: result,
-    }).send(res);
-  };
-
-  getTasksByProject = async (req: Request, res: Response) => {
-    const result = await taskService.getTasksByProject(req.params.projectId);
-    new OK({
-      message: TASKS_MESSAGES.GET_TASKS_SUCCESSFULLY,
-      metadata: result,
-    }).send(res);
-  };
-
-  getTaskById = async (req: Request, res: Response) => {
-    const result = await taskService.getTaskById(req.params.taskId);
-    new OK({
-      message: TASKS_MESSAGES.GET_TASK_SUCCESSFULLY,
-      metadata: result,
-    }).send(res);
-  };
-
-  updateTaskById = async (req: Request, res: Response) => {
-    const result = await taskService.updateTaskById(req.params.taskId, req.body);
-    new OK({
-      message: TASKS_MESSAGES.UPDATE_TASK_SUCCESSFULLY,
-      metadata: result,
-    }).send(res);
-  };
-
-  deleteTaskById = async (req: Request, res: Response) => {
-    const { user_id } = req.decoded_authorization as TokenPayload;
-    const result = await taskService.deleteTaskById(req.params.taskId, user_id);
-    new OK({
-      message: TASKS_MESSAGES.DELETE_TASK_SUCCESSFULLY,
-      metadata: result,
-    }).send(res);
-  };
 }
 
 export default new ProjectController();
