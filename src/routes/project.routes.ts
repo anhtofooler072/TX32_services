@@ -1,7 +1,51 @@
+/**
+ * Express Router configuration for project-related endpoints.
+ * 
+ * @module ProjectRoutes
+ * 
+ * The router handles the following categories of endpoints:
+ * 
+ * 1. Project Core Operations:
+ *    - GET / - Retrieve all projects for current user (rate limited)
+ *    - POST /create - Create a new project
+ *    - GET /:projectId - Get project by ID
+ *    - PATCH /:projectId - Update project details (leader/creator only)
+ *    - DELETE /:projectId - Delete project (leader/creator only)
+ * 
+ * 2. Project Activity Operations:
+ *    - GET /:projectId/activities - Get project activity logs
+ * 
+ * 3. Project Participant Operations:
+ *    - GET /:projectId/participants - Get project participants
+ *    - POST /:projectId/participants - Add participant (leader/creator only)
+ *    - PATCH /:projectId/participants - Update participant role (leader/creator only)
+ *    - DELETE /:projectId/participants - Remove/Leave participant
+ * 
+ * 4. Project Task Operations:
+ *    - POST /:projectId/tasks - Create new task
+ *    - GET /:projectId/tasks - Get all tasks
+ *    - GET /:projectId/tasks/:taskId - Get specific task
+ *    - PATCH /:projectId/tasks/:taskId - Update task
+ *    - DELETE /:projectId/tasks/:taskId - Delete task (leader/creator only)
+ * 
+ * @remarks
+ * - All routes require valid access token (accessTokenValidation middleware)
+ * - Project-specific routes check for project existence and user access
+ * - Some operations are restricted to project leaders/creators
+ * - Project deletion cascades to related entities (participants, logs)
+ * 
+ * @todo
+ * - Implement invite system routes (currently commented out)
+ * - Enhance activity logging details
+ * - Implement subtask routes
+ */
+
+
 import { Router } from "express";
 import projectController from "~/controllers/project.controller";
+import taskController from "~/controllers/task.controller";
 import projectMiddlewares from "~/middlewares/project.middlewares";
-import { validateCreateTask, validateUpdateTask, verifyTaskExists } from "~/middlewares/task.middlewares";
+import { validateCreateSubTask, validateCreateTask, validateUpdateTask, verifyTaskExists } from "~/middlewares/task.middlewares";
 import { accessTokenValidation } from "~/middlewares/user.middlewares";
 import { ProjectQuerySchema } from "~/models/schemas/project.schema";
 import { wrapRequestHandler } from "~/utils/wrapHandler";
@@ -40,6 +84,12 @@ projectRouters.post(
   wrapRequestHandler(projectController.createNewProject)
 );
 
+// middleware check project có tồn tại không và user có quyền truy cập không
+projectRouters.use("/:projectId",
+  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
+  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess)
+);
+
 /*
 Description: Get project by ID
 Method: GET
@@ -47,8 +97,6 @@ Params: id
 */
 projectRouters.get(
   "/:projectId",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
-  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
   wrapRequestHandler(projectController.getProjectById)
 );
 
@@ -60,7 +108,6 @@ Body: { title?: string, description?: string, key?: string }
 */
 projectRouters.patch(
   "/:projectId",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
   projectMiddlewares.validateUpdateProject,
   wrapRequestHandler(
     projectMiddlewares.checkProjectPermissions(["leader", "creator"])
@@ -94,8 +141,6 @@ Path: /:project_id/activities
 // cần chỉnh sửa để lấy chi tiết hơn các hoạt động của project
 projectRouters.get(
   "/:projectId/activities",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
-  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
   wrapRequestHandler(projectController.getProjectActivities)
 );
 
@@ -110,8 +155,6 @@ Path: /:projectId/participants
 */
 projectRouters.get(
   "/:projectId/participants",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
-  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
   wrapRequestHandler(projectController.getProjectParticipants)
 );
 
@@ -122,7 +165,6 @@ Path: /:projectId/participants
 */
 projectRouters.post(
   "/:projectId/participants",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
   wrapRequestHandler(
     projectMiddlewares.checkProjectPermissions(["leader", "creator"])
   ),
@@ -137,7 +179,6 @@ Path: /:projectId/participants
 */
 projectRouters.patch(
   "/:projectId/participants",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
   wrapRequestHandler(
     projectMiddlewares.checkProjectPermissions(["leader", "creator"])
   ),
@@ -152,8 +193,6 @@ Path: /:projectId/participants
 */
 projectRouters.delete(
   "/:projectId/participants",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
-  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
   wrapRequestHandler(projectController.removeProjectParticipant)
 );
 
@@ -163,20 +202,17 @@ projectRouters.delete(
 
 // projectRouters.post(
 //   "/:projectId/invite",
-//   wrapRequestHandler(projectMiddlewares.verifyProjectExists),
 //   projectMiddlewares.validateInviteParticipant,
 //   wrapRequestHandler(projectController.inviteParticipant)
 // );
 
 // projectRouters.post(
 //   "/:projectId/accept-invite",
-//   wrapRequestHandler(projectMiddlewares.verifyProjectExists),
 //   wrapRequestHandler(projectController.acceptProjectInvitation)
 // );
 
 // projectRouters.post(
 //   "/:projectId/decline-invite",
-//   wrapRequestHandler(projectMiddlewares.verifyProjectExists),
 //   wrapRequestHandler(projectController.declineProjectInvitation)
 // );
 
@@ -191,10 +227,8 @@ Path: /:projectId/tasks
 */
 projectRouters.post(
   "/:projectId/tasks",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
-  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
   validateCreateTask,
-  wrapRequestHandler(projectController.createTaskInProject)
+  wrapRequestHandler(taskController.createTaskInProject)
 );
 
 /*
@@ -204,13 +238,11 @@ Path: /:projectId/tasks
 */
 projectRouters.get(
   "/:projectId/tasks",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
-  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
-  wrapRequestHandler(projectController.getTasksByProject)
+  wrapRequestHandler(taskController.getTasksByProject)
 );
 
 
-// kiểm tra task có tồn tại không 
+// middleware check task có tồn tại không 
 projectRouters.use("/:projectId/tasks/:taskId", wrapRequestHandler(verifyTaskExists));
 
 /*
@@ -220,9 +252,7 @@ Path: /:projectId/tasks/:taskId
 */
 projectRouters.get(
   "/:projectId/tasks/:taskId",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
-  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
-  wrapRequestHandler(projectController.getTaskById)
+  wrapRequestHandler(taskController.getTaskById)
 );
 
 /*
@@ -232,10 +262,8 @@ Path: /:projectId/tasks/:taskId
 */
 projectRouters.patch(
   "/:projectId/tasks/:taskId",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
-  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
   validateUpdateTask,
-  wrapRequestHandler(projectController.updateTaskById)
+  wrapRequestHandler(taskController.updateTaskById)
 );
 
 /*
@@ -245,9 +273,24 @@ Path: /:projectId/tasks/:taskId
 */
 projectRouters.delete(
   "/:projectId/tasks/:taskId",
-  wrapRequestHandler(projectMiddlewares.verifyProjectExists),
-  wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess),
-  wrapRequestHandler(projectController.deleteTaskById)
+  wrapRequestHandler(
+    projectMiddlewares.checkProjectPermissions(["leader", "creator"])
+  ),
+  wrapRequestHandler(taskController.deleteTaskById)
 );
+
+/*
+ * -------------------------------- Project subtask routes --------------------------------
+ */
+
+/*
+Description: Create a new subtask in task
+Method: POST
+*/
+// projectRouters.post("/:projectId/tasks/:taskId/subtasks",
+//   validateCreateSubTask,
+//   wrapRequestHandler(taskController.createSubTask)
+// );
+
 
 export default projectRouters;
