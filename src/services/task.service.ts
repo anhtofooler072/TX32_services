@@ -346,7 +346,7 @@ class TaskService {
             ]).toArray();
     }
 
-    async updateTaskById(taskId: string, updateData: UpdateTaskReqBody) {
+    async updateTaskById(taskId: string, userId: string, updateData: UpdateTaskReqBody) {
         const existingTask = await databaseServices.tasks.findOne({
             _id: new ObjectId(taskId),
             deleted: { $ne: true }
@@ -369,7 +369,6 @@ class TaskService {
             }
         });
 
-        // Handle assignee conversion
         if (updateData.assignee) {
             if (typeof updateData.assignee === 'string') {
                 updateFields.assignee = new ObjectId(String(updateData.assignee));
@@ -380,35 +379,12 @@ class TaskService {
 
         if (updateData.dueDate) {
             updateFields.dueDate = new Date(updateData.dueDate);
-            if (isNaN(updateFields.dueDate.getTime())) {
-                throw new ErrorWithStatus({
-                    message: "Invalid date format",
-                    status: HTTP_STATUS_CODES.BAD_REQUEST
-                })
-            }
         }
 
         if (updateData.progress !== undefined) {
-            if (isNaN(updateData.progress) || updateData.progress < 0 || updateData.progress > 100) {
-                throw new ErrorWithStatus({
-                    message: "Progress must be a number between 0 and 100",
-                    status: HTTP_STATUS_CODES.BAD_REQUEST
-                })
-            }
             updateFields.progress = updateData.progress;
         }
 
-        if (updateData.status && !Object.values(TaskStatus).includes(updateData.status)) {
-            throw new Error('Invalid task status');
-        }
-
-        if (updateData.priority && !Object.values(PriorityLevel).includes(updateData.priority)) {
-            throw new Error('Invalid priority level');
-        }
-
-        if (updateData.type && !Object.values(TaskType).includes(updateData.type)) {
-            throw new Error('Invalid task type');
-        }
 
         const updateResult = await databaseServices.tasks.findOneAndUpdate(
             { _id: new ObjectId(taskId) },
@@ -425,26 +401,26 @@ class TaskService {
         }
 
         // Log activity
-        // const modifiedBy = await databaseServices.users.findOne(
-        //     { _id: new ObjectId(userId) },
-        //     { projection: { username: 1, email: 1, avatar_url: 1 } }
-        // );
+        const modifiedBy = await databaseServices.users.findOne(
+            { _id: new ObjectId(userId) },
+            { projection: { username: 1, email: 1, avatar_url: 1 } }
+        );
 
-        // await activityService.logActivity({
-        //     projectId: existingTask.project_id.toString(),
-        //     entity: 'Task',
-        //     action: "UPDATE",
-        //     modifiedBy: {
-        //         _id: new ObjectId(userId),
-        //         username: modifiedBy?.username || "",
-        //         email: modifiedBy?.email || "",
-        //         avatar_url: modifiedBy?.avatar_url || "",
-        //     },
-        //     changes: {
-        //         taskId: { from: taskId, to: taskId }
-        //     },
-        //     detail: `updated task ${updateResult.value.title}`,
-        // });
+        await activityService.logActivity({
+            projectId: existingTask.project_id.toString(),
+            entity: 'Task',
+            action: "UPDATE",
+            modifiedBy: {
+                _id: new ObjectId(userId),
+                username: modifiedBy?.username || "",
+                email: modifiedBy?.email || "",
+                avatar_url: modifiedBy?.avatar_url || "",
+            },
+            changes: {
+                taskId: { from: taskId, to: taskId }
+            },
+            detail: `updated task ${updateResult?.title || ''}`,
+        });
 
         return this.getTaskById(taskId);
     }
@@ -476,6 +452,23 @@ class TaskService {
             });
         }
 
+        if (task.parentTask) {
+            const remainingSubtasks = await databaseServices.tasks.countDocuments({
+                parentTask: task.parentTask,
+                deleted: { $ne: true },
+            });
+
+            await databaseServices.tasks.updateOne(
+                { _id: task.parentTask },
+                {
+                    $set: {
+                        hasChildren: remainingSubtasks > 0,
+                        childCount: remainingSubtasks,
+                    },
+                }
+            );
+        }
+
         // Ghi log hoạt động
         await activityService.logActivity({
             projectId: task.project_id.toString(),
@@ -499,7 +492,56 @@ class TaskService {
         };
     }
 
+    // async updateTaskStatus(taskId: string, status: TaskStatus, userId: string) {
+    //     const task = await databaseServices.tasks.findOne({
+    //         _id: new ObjectId(taskId),
+    //         deleted: { $ne: true },
+    //     });
 
+    //     if (!task) {
+    //         throw new ErrorWithStatus({
+    //             message: TASKS_MESSAGES.TASK_NOT_FOUND,
+    //             status: HTTP_STATUS_CODES.NOT_FOUND,
+    //         });
+    //     }
+
+    //     const updateResult = await databaseServices.tasks.findOneAndUpdate(
+    //         { _id: new ObjectId(taskId) },
+    //         { $set: { status, updated_at: new Date() } },
+    //         { returnDocument: 'after' }
+    //     );
+
+    //     if (!updateResult) {
+    //         throw new ErrorWithStatus({
+    //             message: TASKS_MESSAGES.FAILED_TO_UPDATE_TASK_STATUS,
+    //             status: HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR,
+    //         });
+    //     }
+
+    //     // Log activity
+    //     const modifiedBy = await databaseServices.users.findOne(
+    //         { _id: new ObjectId(userId) },
+    //         { projection: { username: 1, email: 1, avatar_url: 1 } }
+    //     );
+
+    //     await activityService.logActivity({
+    //         projectId: task.project_id.toString(),
+    //         entity: 'Task',
+    //         action: "UPDATE",
+    //         modifiedBy: {
+    //             _id: new ObjectId(userId),
+    //             username: modifiedBy?.username || "",
+    //             email: modifiedBy?.email || "",
+    //             avatar_url: modifiedBy?.avatar_url || "",
+    //         },
+    //         changes: {
+    //             taskId: { from: taskId, to: taskId }
+    //         },
+    //         detail: `updated task ${updateResult?.title || ''}`,
+    //     });
+
+    //     return this.getTaskById(taskId);
+    // }
 
     // async moveTask(taskId: string, newParentId: string) {
     //     const session = await databaseServices.client.startSession();
@@ -599,74 +641,6 @@ class TaskService {
     // }
 
 
-
-    // async createSubTask(parentTaskId: string, payload: CreateTaskReqBody) {
-    //     const parentTask = await databaseServices.tasks.findOne({
-    //         _id: new ObjectId(parentTaskId),
-    //     });
-
-    //     if (!parentTask) {
-    //         throw new Error("Parent task not found");
-    //     }
-
-    //     const {
-    //         title,
-    //         description,
-    //         project_id,
-    //         creator,
-    //         type,
-    //         assignee,
-    //         priority,
-    //         dueDate,
-    //     } = payload;
-
-    //     const task = {
-    //         _id: new ObjectId(),
-    //         title,
-    //         description,
-    //         project_id: new ObjectId(project_id),
-    //         creator: new ObjectId(creator),
-    //         type,
-    //         assignee: new ObjectId(assignee),
-    //         status: TaskStatus.TODO,
-    //         priority,
-    //         progress: 0,
-    //         dueDate: dueDate ? new Date(dueDate) : null,
-    //         parentTask: new ObjectId(parentTaskId),
-    //         ancestors: [...parentTask.ancestors, new ObjectId(parentTaskId)],
-    //         level: parentTask.level + 1,
-    //         hasChildren: false,
-    //         childCount: 0,
-    //         created_at: new Date(),
-    //         updated_at: new Date(),
-    //         deleted: false,
-    //         deletedAt: null,
-    //     };
-
-    //     const session = await databaseServices.client.startSession();
-
-    //     try {
-    //         await session.withTransaction(async () => {
-    //             // Insert new subtask
-    //             await databaseServices.tasks.insertOne(task, { session });
-
-    //             // Update parent task
-    //             await databaseServices.tasks.updateOne(
-    //                 { _id: new ObjectId(parentTaskId) },
-    //                 {
-    //                     $set: { hasChildren: true },
-    //                     $inc: { childCount: 1 },
-    //                 },
-    //                 { session }
-    //             );
-    //         });
-    //     } finally {
-    //         await session.endSession();
-    //     }
-
-    //     return task;
-    // }
-
     // async getTaskWithChildren(taskId: string) {
     //     const [task, children] = await Promise.all([
     //         databaseServices.tasks.findOne({
@@ -700,6 +674,94 @@ class TaskService {
     //         .sort({ created_at: -1 })
     //         .toArray();
     // }
+
+    /* 
+    * -------------------------------- Project subtask controller --------------------------------
+    */
+    async createSubTask(payload: CreateTaskReqBody) {
+        const parentTaskId = payload.parent_task;
+        const parentTask = await databaseServices.tasks.findOne({
+            _id: new ObjectId(parentTaskId),
+        });
+
+        if (!parentTask) {
+            throw new Error("Parent task not found");
+        }
+
+        if (parentTask.type === TaskType.SUBTASK) {
+            throw new Error("Cannot create a subtask under another subtask");
+        }
+
+        const {
+            title,
+            description,
+            project_id,
+            creator,
+            assignee,
+            priority,
+            dueDate,
+        } = payload;
+
+        const subtask = new Task({
+            _id: new ObjectId(),
+            title,
+            description,
+            project_id: new ObjectId(project_id),
+            creator: new ObjectId(creator),
+            type: TaskType.SUBTASK,
+            assignee: assignee ? new ObjectId(assignee) : null,
+            status: TaskStatus.TODO,
+            priority,
+            progress: 0,
+            dueDate: dueDate ? new Date(dueDate) : null,
+            parentTask: new ObjectId(parentTaskId),
+            ancestors: [...parentTask.ancestors, new ObjectId(parentTaskId)],
+            level: parentTask.level + 1,
+            hasChildren: false,
+            childCount: 0,
+            created_at: new Date(),
+            updated_at: new Date(),
+            deleted: false,
+            deletedAt: null,
+        });
+
+        // Tạo subtask mới
+        await databaseServices.tasks.insertOne(subtask);
+
+        // Cập nhật parent task
+        await databaseServices.tasks.updateOne(
+            { _id: new ObjectId(parentTaskId) },
+            {
+                $set: { hasChildren: true },
+                $inc: { childCount: 1 },
+            });
+
+
+        // Log hoạt động
+        await activityService.logActivity({
+            projectId: project_id,
+            entity: "Task",
+            action: "CREATE",
+            modifiedBy: { _id: new ObjectId(creator) },
+            changes: {
+                taskId: { from: null, to: subtask._id.toString() },
+                parentTaskId: { from: null, to: parentTaskId },
+            },
+            detail: `created subtask ${title} under task ${parentTaskId}`,
+        });
+
+        return subtask;
+    }
+
+    async getSubTasks(taskId: string) {
+        return databaseServices.tasks
+            .find({
+                parentTask: new ObjectId(taskId),
+                deleted: { $ne: true },
+            })
+            .toArray();
+    }
+
 }
 
 export default new TaskService();

@@ -37,7 +37,8 @@ class TaskController {
     };
 
     updateTaskById = async (req: Request, res: Response) => {
-        const result = await taskService.updateTaskById(req.params.taskId, req.body);
+        const { user_id } = req.decoded_authorization as TokenPayload;
+        const result = await taskService.updateTaskById(req.params.taskId, user_id, req.body);
         new OK({
             message: TASKS_MESSAGES.UPDATE_TASK_SUCCESSFULLY,
             metadata: result,
@@ -57,17 +58,25 @@ class TaskController {
      * -------------------------------- Project subtask controller --------------------------------
      */
 
-    // createSubTask = async (req: Request, res: Response) => {
-    //     const { user_id } = req.decoded_authorization as TokenPayload;
-    //     const parentId = req.params.taskId;
-    //     const taskData = { ...req.body, parent_id: parentId, creator: user_id };
-    //     const result = await taskService.createSubTask(taskData);
-    //     new CREATED({
-    //         message: TASKS_MESSAGES.CREATE_SUBTASK_SUCCESSFULLY,
-    //         metadata: result,
-    //     }).send(res);
+    createSubTask = async (req: Request, res: Response) => {
+        const { user_id } = req.decoded_authorization as TokenPayload;
+        const parentId = req.params.taskId;
+        const projectId = req.params.projectId;
+        const taskData = { ...req.body, project_id: projectId, parent_task: parentId, creator: user_id };
+        const result = await taskService.createSubTask(taskData);
+        new CREATED({
+            message: TASKS_MESSAGES.CREATE_SUBTASK_SUCCESSFULLY,
+            metadata: result,
+        }).send(res);
+    };
 
-    // };
+    getSubTasks = async (req: Request, res: Response) => {
+        const result = await taskService.getSubTasks(req.params.taskId);
+        new OK({
+            message: TASKS_MESSAGES.GET_SUBTASKS_OF_TASK_SUCCESSFULLY,
+            metadata: result,
+        }).send(res);
+    };
 }
 
 export default new TaskController();

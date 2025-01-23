@@ -84,11 +84,17 @@ projectRouters.post(
   wrapRequestHandler(projectController.createNewProject)
 );
 
-// middleware check project có tồn tại không và user có quyền truy cập không
+/*
+ * ============================================================================
+ * IMPORTANT: Middleware to verify project existence and user access
+ * Applied to all routes with :projectId parameter
+ * ============================================================================
+ */
 projectRouters.use("/:projectId",
   wrapRequestHandler(projectMiddlewares.verifyProjectExists),
   wrapRequestHandler(projectMiddlewares.verifyUserProjectAccess)
 );
+
 
 /*
 Description: Get project by ID
@@ -236,13 +242,19 @@ Description: Get all tasks in project
 Method: GET
 Path: /:projectId/tasks
 */
+// Bổ sung lấy tất cả các task trong project, bao gồm cả subtask
 projectRouters.get(
   "/:projectId/tasks",
   wrapRequestHandler(taskController.getTasksByProject)
 );
 
 
-// middleware check task có tồn tại không 
+/*
+ * ============================================================================
+ * IMPORTANT: Middleware to verify task existence for all task-specific routes
+ * Applied to all routes with :taskId parameter
+ * ============================================================================
+ */
 projectRouters.use("/:projectId/tasks/:taskId", wrapRequestHandler(verifyTaskExists));
 
 /*
@@ -287,9 +299,26 @@ projectRouters.delete(
 Description: Create a new subtask in task
 Method: POST
 */
-// projectRouters.post("/:projectId/tasks/:taskId/subtasks",
-//   validateCreateSubTask,
-//   wrapRequestHandler(taskController.createSubTask)
+projectRouters.post("/:projectId/tasks/:taskId/subtasks",
+  validateCreateSubTask,
+  wrapRequestHandler(taskController.createSubTask)
+);
+
+/*
+Description: Get all subtasks in task
+Method: GET
+*/
+projectRouters.get("/:projectId/tasks/:taskId/subtasks",
+  wrapRequestHandler(taskController.getSubTasks)
+);
+
+/*
+Description: Move task to another task
+Method: POST
+*/
+// projectRouters.post("/:projectId/tasks/:taskId/move",
+//     validateMoveTask,
+//     wrapRequestHandler(taskController.moveTask)
 // );
 
 
