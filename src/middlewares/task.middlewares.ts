@@ -7,6 +7,7 @@ import HTTP_STATUS_CODES from '~/core/statusCodes';
 import { ITask, PriorityLevel, TaskStatus, TaskType } from '~/models/schemas/task.schema';
 import databaseServices from '~/services/database.service';
 import projectService from '~/services/project.service';
+import taskService from '~/services/task.service';
 import usersService from '~/services/user.service';
 import { ErrorWithStatus } from '~/utils/errors.util';
 import { validate } from '~/utils/validations.util';
@@ -98,7 +99,14 @@ export const validateUpdateTask = validate(checkSchema({
     ...createTaskSchema,
     title: { ...createTaskSchema.title, optional: true },
     type: { ...createTaskSchema.type, optional: true },
-    assignee: { ...createTaskSchema.assignee, optional: true }
+    assignee: { ...createTaskSchema.assignee, optional: true },
+    creator: {
+        custom: {
+            options: () => {
+                throw new Error("Updating creator is not allowed");
+            },
+        },
+    },
 }));
 
 export const verifyTaskExists = async (req: Request, res: Response, next: NextFunction) => {
@@ -117,66 +125,50 @@ export const verifyTaskExists = async (req: Request, res: Response, next: NextFu
 
     req.task = task;
     next();
-}
+};
 
-// // Middleware kiểm tra quyền truy cập task
-// export const checkTaskAccess = async (req: Request, res: Response, next: NextFunction) => {
-//     try {
-//         const taskId = req.params.taskId;
-//         const userId = req.decoded_authorization.user_id as TokenPayload;
+// Middleware kiểm tra khi tạo subtask
+export const validateCreateSubTask = validate(checkSchema({
+    ...createTaskSchema,
+    parent_task: {
+        notEmpty: {
+            errorMessage: "Parent task is required",
+        },
+        custom: {
+            options: async (value, { req }) => {
+                // Kiểm tra task cha có tồn tại hay không
+                const parentTask = await taskService.getTaskById(value);
 
-//         const task = await taskService.getTaskById(new ObjectId(taskId));
+                if (!parentTask || parentTask.deleted) {
+                    throw new Error("Parent task does not exist or has been deleted");
+                }
 
-//         if (!task) {
-//             throw new ErrorWithStatus({
-//                 message: TASKS_MESSAGES.TASK_NOT_FOUND,
-//                 status: HTTP_STATUS_CODES.NOT_FOUND
-//             });
-//         }
+                // Task cha không được là Subtask
+                if (parentTask.type === TaskType.SUBTASK) {
+                    throw new Error("Parent task cannot be a subtask");
+                }
 
-//         // Kiểm tra nếu user là creator hoặc assignee của task
-//         if (!task.creator.equals(userId) && !task.assignee.equals(userId)) {
-//             throw new ErrorWithStatus({
-//                 message: 'You do not have permission to access this task',
-//                 status: HTTP_STATUS_CODES.FORBIDDEN
-//             });
-//         }
+                // Task cha phải thuộc cùng một project
+                if (!req.params?.projectId || parentTask.project_id.toString() !== req.params.projectId) {
+                    throw new Error("Parent task must belong to the same project");
+                }
 
-//         req.task = task;
-//         next();
-//     } catch (error) {
-//         next(error);
-//     }
-// };
-
-// // Middleware kiểm tra khi tạo subtask
-// export const validateCreateSubTask = async (req: Request, res: Response, next: NextFunction) => {
-//     try {
-//         const parentId = req.params.taskId;
-//         const projectId = req.body.project_id;
-
-//         const parentTask = await taskService.getTaskById(new ObjectId(parentId));
-
-//         if (!parentTask) {
-//             throw new ErrorWithStatus({
-//                 message: 'Parent task not found',
-//                 status: HTTP_STATUS_CODES.NOT_FOUND
-//             });
-//         }
-
-//         // Kiểm tra project_id của subtask phải giống với task cha
-//         if (!parentTask.project_id.equals(projectId)) {
-//             throw new ErrorWithStatus({
-//                 message: 'Subtask must belong to the same project as parent task',
-//                 status: HTTP_STATUS_CODES.BAD_REQUEST
-//             });
-//         }
-
-//         next();
-//     } catch (error) {
-//         next(error);
-//     }
-// };
+                return true;
+            },
+        },
+    },
+    type: {
+        optional: true,
+        custom: {
+            options: (value) => {
+                if (value !== TaskType.SUBTASK) {
+                    throw new Error("Type must be Subtask");
+                }
+                return true;
+            },
+        },
+    },
+}));
 
 // // Middleware kiểm tra khi di chuyển task sang parent khác
 // export const validateMoveTask = async (req: Request, res: Response, next: NextFunction) => {
