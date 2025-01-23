@@ -5,7 +5,7 @@ export interface CreateTaskReqBody {
     description?: string;
     project_id: string;
     creator: string;
-    parentTask?: string;
+    parent_task?: string;
     type: TaskType;
     assignee?: string;
     status?: TaskStatus;
