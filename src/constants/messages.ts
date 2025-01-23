@@ -166,6 +166,9 @@ export const TASKS_MESSAGES = {
   UPDATE_TASK_SUCCESSFULLY: "Update task successfully",
   DELETE_TASK_SUCCESSFULLY: "Delete task successfully",
 
+  CREATE_SUBTASK_SUCCESSFULLY: "Create subtask successfully",
+  GET_SUBTASKS_OF_TASK_SUCCESSFULLY: "Get subtasks of task successfully",
+
   FAILED_TO_DELETE_TASK: "Failed to delete task",
   UNAUTHORIZED_TASK_DELETION: "You do not have permission to delete tasks",
 } as const;
